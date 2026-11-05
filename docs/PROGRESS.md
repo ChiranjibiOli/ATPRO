@@ -19,3 +19,5 @@ Testing performed locally before GitHub push:
 Implementation intentionally excludes actual registration/login, real transport booking, optimization, GPS, backend, PostgreSQL and Android APK. Prior web prototype archives were not merged without reviewing their development-only security and database assumptions.
 
 Next two features: API-backed Farmer/Driver registration and authenticated login with server-controlled roles; never public Admin self-registration.
+
+CI verification update: GitHub Actions workflow 42046622050 for commit 8e80873b247ae6686e36d28392009686affec713 completed successfully on 2026-11-05. Checks: nine domain/storage tests passed, npm dependencies installed, TypeScript validation passed, Expo Android JavaScript export succeeded. This validates a bundle, NOT an APK installation or physical-device user interaction. Public hosted preview remains unavailable; use Expo Go locally.
