@@ -56,7 +56,7 @@ export default function App() {
 
   return (
     <View style={styles.app}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.canvas} />
+      <StatusBar barStyle="dark-content" />
       <View style={styles.topBar}>
         <View style={styles.monogram}><Text style={styles.monogramText}>A</Text></View>
         <View style={styles.brandText}>

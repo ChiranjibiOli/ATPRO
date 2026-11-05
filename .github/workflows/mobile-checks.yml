@@ -20,3 +20,6 @@ jobs:
       - name: TypeScript validation
         working-directory: apps/mobile
         run: npm run typecheck
+      - name: Bundle Android JavaScript with Expo
+        working-directory: apps/mobile
+        run: npx expo export --platform android --output-dir dist
