@@ -29,3 +29,5 @@ Feature 4: Login screen, authenticated account, secure token restoration and log
 API storage apps/api/data/auth.json is gitignored; PostgreSQL, email verification and HTTPS hosting remain future work.
 GitHub CI: API tests, mobile tests, npm install, TypeScript and Expo Android export required. Results verified separately. No Android physical device or public preview verified.
 Next: RBAC and Farmer dashboard, with genuine API records and empty/error states.
+
+CI verification: GitHub Actions run 42232482149 for commit 74d2bc30ca7b5191ee2ffdf632bfbb9965d7ff5a completed successfully: API integration tests, 9 mobile domain tests, dependency installation, TypeScript and Expo Android JavaScript export all passed. Follow-up commit dbb750917bc8f5a32d205085d9cb1de741933fc0 fixes Windows filesystem path resolution and requires a new CI pass. No APK or physical phone UI verification.
