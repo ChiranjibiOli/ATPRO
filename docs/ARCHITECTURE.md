@@ -55,3 +55,7 @@ Client role preference stored in AsyncStorage is public browsing state only, NOT
 - Operational: Support mobile users, optional cooperative assistance for farmers unfamiliar with apps, and manual declared locations to avoid requiring live GPS. Network failures must be visible.
 - Testing: create algorithm fixtures with multiple drivers, farmers, compatible/incompatible products, 500kg allocation with remaining 100kg and time-sensitive tomatoes. Compare baseline vs optimized distance and reject infeasible routes.
 - Scope: single market per route, fixed-endpoint pickup sequence, no paid services for local proof of concept. Multiple destination markets and live GPS can remain future scope.
+
+## 2026-11-06 authentication implementation plan
+
+Add apps/api as a Node.js 22 built-in HTTP API with no paid services or framework dependency. Endpoints POST /api/auth/register, POST /api/auth/login, GET /api/auth/me, POST /api/auth/logout. Store users and SHA-256 token digests in a private JSON file for single-process local development. Use scrypt password hashing with random salts, fixed-work-factor comparisons, cryptographically random bearer tokens, generic login errors, request-size limits and basic IP rate limiting. Serialize writes and atomically replace storage file; avoid concurrent-process deployment. Use secure-store for device tokens and EXPO_PUBLIC_API_URL for backend location. Never trust local role preference as an authenticated role. Production requires PostgreSQL, HTTPS, rate limiting across instances, email verification and admin provisioning.

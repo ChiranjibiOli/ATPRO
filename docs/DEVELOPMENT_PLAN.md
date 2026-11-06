@@ -36,3 +36,7 @@ Change this sequence based on prior completed features and dependency gaps. Two 
 - Tests pass and app is integrated with prior code.
 - Commit and push verified to ChiranjibiOli/ATPRO only.
 - Report exact commit link, tests, feature scope, blockers, and mobile preview instructions or verified live URL.
+
+## 2026-11-06 selected pair
+
+Repository audit confirms landing/roles are complete and CI green. Implement only registration and login (including /me and logout as the login vertical slice). First write server authentication and tests, then connect Expo mobile forms and session restoration. No Farmer dashboard or request APIs in this increment. Verify npm tests, TypeScript and Android Expo export via GitHub Actions; publish only verified commit. Document lack of public live preview until backend deployment.

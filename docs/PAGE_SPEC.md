@@ -102,3 +102,25 @@ Built items refer to implemented code, not an independently confirmed Android ru
 - Use feasible 2-opt to improve driver D → farmer stops → market M while keeping D and M fixed.
 - Record unassigned requests; driver acceptance required; pickups/delivery confirmed with audit events.
 - Calculate transparent cost allocations based on real recorded route and quantity. Do not claim paid transactions.
+
+## 2026-11-06 implementation contract: registration and login
+
+### Feature 3: Farmer/Driver registration
+- Role/goal: unauthenticated Farmer or Driver creates a personal account; Admin cannot register.
+- UI: full name, email, password, confirm password, Farmer/Driver radio selector; idle, loading, field errors, duplicate email, network error and success.
+- Actions: select role, submit, navigate to login after success. No fabricated OTP verification.
+- Validation: trimmed name 2–100 chars, lowercase valid email <=254, password 12–128 chars, confirmation equality, exact role allowlist; enforce on server as well.
+- Auth: public endpoint POST /api/auth/register {name,email,password,role}; 201 {user:{id,name,email,role}}; 400 invalid, 409 duplicate, 429 rate limit, 503 storage unavailable. No user-supplied IDs or admin role.
+- Entities: User {id,name,email,role,passwordSalt,passwordHash,createdAt}; sensitive hashes never returned.
+- Persistence: backend serialized atomic file write for prototype; production migrate to PostgreSQL, transactional uniqueness and managed secrets.
+- Acceptance/tests: Farmer/Driver register, duplicate normalized email rejected, admin/weak password rejected, password not stored as plaintext; app shows errors and success.
+
+### Feature 4: Login, identity and logout
+- Role/goal: registered Farmer/Driver (and later securely provisioned Admin) authenticates; role is always supplied by server.
+- UI: email/password login; signed-in identity panel with name and role; logout. Loading, invalid credentials, offline/network, expired token, signed out.
+- Actions: login, restore session on restart, logout; never authorize based on saved public role preference.
+- Auth API: POST /api/auth/login {email,password} -> 200 {token,expiresAt,user}; GET /api/auth/me Bearer token -> {user}; POST /api/auth/logout Bearer token -> 204. Errors: 400,401,429,503.
+- Entities: Session {tokenHash,userId,expiresAt,createdAt}, User. Token is cryptographically random, hashed at rest, stored in mobile platform secure store.
+- Authorization: protected routes require valid unexpired session. Constant-time hash comparison and generic bad-credential response. Server-side throttling.
+- Acceptance/tests: correct login, wrong password, session restoration, logout revocation, unauthorized access rejected, role cannot be escalated through client preference.
+- Operational limitations: local HTTP is allowed ONLY for LAN development; production requires HTTPS and secure managed storage. No live hosted backend or email verification yet.
