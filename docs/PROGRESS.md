@@ -22,6 +22,10 @@ Next two features: API-backed Farmer/Driver registration and authenticated login
 
 CI verification update: GitHub Actions workflow 42046622050 for commit 8e80873b247ae6686e36d28392009686affec713 completed successfully on 2026-11-05. Checks: nine domain/storage tests passed, npm dependencies installed, TypeScript validation passed, Expo Android JavaScript export succeeded. This validates a bundle, NOT an APK installation or physical-device user interaction. Public hosted preview remains unavailable; use Expo Go locally.
 
-## 2026-11-06 — Planned pair before implementation
+## 2026-11-06 — Authentication implementation
 
-Inspected main at 999d3764cd2267c2faa186c2c8b7503159771376: Expo landing and role explorer already implemented; GitHub Actions succeeded; no open issues. Skip both. Next two features: (1) secure Farmer/Driver registration with API persistence and (2) authenticated login/session restore/logout using server-issued role. Contracts, fields, errors, acceptance and tests are in PAGE_SPEC.md. API to be local-only until verified hosted service exists. Plan recorded before writing implementation.
+Feature 3: Farmer/Driver registration screen and POST /api/auth/register with strict roles, validation, duplicate detection, scrypt hashing and atomic local JSON storage.
+Feature 4: Login screen, authenticated account, secure token restoration and logout. POST /api/auth/login, GET /api/auth/me, POST /api/auth/logout. Token digests stored server-side, expiry 8 hours. Browser role preference is not authorization.
+API storage apps/api/data/auth.json is gitignored; PostgreSQL, email verification and HTTPS hosting remain future work.
+GitHub CI: API tests, mobile tests, npm install, TypeScript and Expo Android export required. Results verified separately. No Android physical device or public preview verified.
+Next: RBAC and Farmer dashboard, with genuine API records and empty/error states.
