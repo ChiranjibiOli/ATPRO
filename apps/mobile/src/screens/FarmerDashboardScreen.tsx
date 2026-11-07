@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ActionButton } from '../components/ActionButton';
 import { ApiError, farmerOverview, type FarmerOverview } from '../auth/client';
@@ -12,6 +12,8 @@ type Props = {
   authError: string | null;
 };
 export function FarmerDashboardScreen({ token, onLogout, onSessionExpired, busy, authError }: Props) {
+  const expiredRef = useRef(onSessionExpired);
+  expiredRef.current = onSessionExpired;
   const [overview, setOverview] = useState<FarmerOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,12 +26,12 @@ export function FarmerDashboardScreen({ token, onLogout, onSessionExpired, busy,
     } catch (e) {
       if (!active()) return;
       if (e instanceof ApiError && e.status === 401) {
-        await onSessionExpired();
+        await expiredRef.current();
         return;
       }
       setError(e instanceof ApiError ? e.message : 'Cannot reach the API. Check your network and retry.');
     } finally { if (active()) setLoading(false); }
-  }, [token, onSessionExpired]);
+  }, [token]);
   useEffect(() => {
     let mounted = true;
     void load(() => mounted);
