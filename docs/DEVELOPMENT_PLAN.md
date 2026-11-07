@@ -40,3 +40,11 @@ Change this sequence based on prior completed features and dependency gaps. Two 
 ## 2026-11-06 selected pair
 
 Repository audit confirms landing/roles are complete and CI green. Implement only registration and login (including /me and logout as the login vertical slice). First write server authentication and tests, then connect Expo mobile forms and session restoration. No Farmer dashboard or request APIs in this increment. Verify npm tests, TypeScript and Android Expo export via GitHub Actions; publish only verified commit. Document lack of public live preview until backend deployment.
+
+## 2026-11-07 selected pair (plan recorded before code)
+
+Audit: head fe8b19e2fb5c052f492a1fd81e26b59c038db133; mobile landing, roles, registration, login and account already exist. Latest GitHub CI 42232630276 passed. No open issues. Implement exactly:
+A. Shared server authentication/role guard, exercised by GET /api/farmer/overview (401 missing/expired token, 403 authenticated non-Farmer). No client preference can grant privileges. Avoid public Admin registration.
+B. Farmer-only mobile dashboard reached after authenticated Farmer login, showing real server-backed account identity and actual request/trip counts from persisted collections (empty if no records), with loading/retry/offline states and logout. Driver/Admin retain the existing account screen.
+
+Acceptance: 401/403/200 integration tests; zero counts with empty store, own records only with cross-farmer fixtures; mobile TS typecheck and Expo Android export; no invented requests or fake navigation. No new request creation until the following iteration. JSON prototype persistence remains single-process only.
