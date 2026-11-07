@@ -124,3 +124,23 @@ Built items refer to implemented code, not an independently confirmed Android ru
 - Authorization: protected routes require valid unexpired session. Constant-time hash comparison and generic bad-credential response. Server-side throttling.
 - Acceptance/tests: correct login, wrong password, session restoration, logout revocation, unauthorized access rejected, role cannot be escalated through client preference.
 - Operational limitations: local HTTP is allowed ONLY for LAN development; production requires HTTPS and secure managed storage. No live hosted backend or email verification yet.
+
+## 2026-11-07 implemented: Farmer role guard and overview
+
+### Feature 5: Farmer RBAC vertical slice
+- Role/goal: Authenticated Farmer accesses own dashboard API; Driver/Admin and anonymous clients cannot.
+- Fields: Authorization Bearer token only. No userId or role from client input.
+- API: GET /api/farmer/overview returns 200 {user:{id,name,email,role},summary:{totalRequests,pendingRequests,activeTrips}}; 401 missing/expired/invalid token; 403 valid non-Farmer token; 503 storage error.
+- Server flow: validate session token digest, check expiry, load user, enforce farmer role, filter records by farmerId and tripAssignments to that user's requests.
+- Data: Users, Sessions; optional persisted Requests, Trips, TripAssignments. No new database tables or synthetic records.
+- Tests: anonymous, malformed token, driver denial, Farmer allowed, isolation between two farmers, revoked token denial.
+- Scope: applies to this new protected endpoint. Full API authorization framework will expand when further endpoints are introduced.
+
+### Feature 6: Farmer dashboard
+- Role/goal: Farmer sees their own name and true request/trip counts after login; Driver/Admin retain authenticated account screen.
+- UI fields: read-only name, total requests, pending requests, active trips; no data entry.
+- Actions: automatic fetch, retry after network failure, logout. No dead request-creation button.
+- Authorization: mobile uses server-authenticated user role to select dashboard, backend independently enforces role and ownership.
+- States: loading spinner, zero-record explanation, populated counts, network/API error and retry, 401 session-expired returning to login.
+- Acceptance: no fake metrics, only own records, valid role navigation, successful Android JS export and TS typecheck.
+- Tests: backend integration of authorization and record counts; mobile build/typecheck CI. Physical device UI remains unverified.

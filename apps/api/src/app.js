@@ -86,6 +86,29 @@ export function createApp({ store, now = () => Date.now(), limiter = createLimit
         const user = session && db.users.find(u => u.id === session.userId);
         return user ? respond(res, 200, { user: publicUser(user) }) : respond(res, 401, { error: 'Session expired.' });
       }
+      if (path === '/api/farmer/overview' && req.method === 'GET') {
+        const token = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(req.headers.authorization ?? '')?.[1];
+        if (!token) return respond(res, 401, { error: 'Authentication required.' });
+        const db = await store.read();
+        const session = db.sessions.find(s => s.tokenHash === tokenDigest(token) && Date.parse(s.expiresAt) > now());
+        const user = session && db.users.find(u => u.id === session.userId);
+        if (!user) return respond(res, 401, { error: 'Session expired.' });
+        if (user.role !== 'farmer') return respond(res, 403, { error: 'Farmer access required.' });
+        // Only count persisted records belonging to the authenticated farmer.
+        // Collections are introduced by the upcoming request/trip implementation.
+        const requests = (db.requests ?? []).filter(r => r.farmerId === user.id);
+        const trips = (db.trips ?? []).filter(t =>
+          (db.tripAssignments ?? []).some(a => a.tripId === t.id &&
+            requests.some(r => r.id === a.requestId)));
+        return respond(res, 200, {
+          user: publicUser(user),
+          summary: {
+            totalRequests: requests.length,
+            pendingRequests: requests.filter(r => r.status === 'pending').length,
+            activeTrips: trips.filter(t => ['accepted', 'in_transit'].includes(t.status)).length,
+          },
+        });
+      }
       return respond(res, 404, { error: 'Not found.' });
     } catch (error) {
       if (error.status === 400 || error.status === 413) return respond(res, error.status, { error: error.message });

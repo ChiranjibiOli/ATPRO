@@ -24,3 +24,10 @@ export const register = (body: { name:string; email:string; password:string; rol
 export const login = (body: {email:string;password:string}) => apiRequest<LoginResult>('/api/auth/login','POST',body);
 export const me = (token:string) => apiRequest<{user:AuthUser}>('/api/auth/me','GET',undefined,token);
 export const logout = (token:string) => apiRequest<{message:string}>('/api/auth/logout','POST',undefined,token);
+
+export type FarmerOverview = {
+  user: AuthUser;
+  summary: { totalRequests: number; pendingRequests: number; activeTrips: number };
+};
+export const farmerOverview = (token: string) =>
+  apiRequest<FarmerOverview>('/api/farmer/overview', 'GET', undefined, token);

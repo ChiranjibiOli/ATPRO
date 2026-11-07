@@ -31,3 +31,12 @@ GitHub CI: API tests, mobile tests, npm install, TypeScript and Expo Android exp
 Next: RBAC and Farmer dashboard, with genuine API records and empty/error states.
 
 CI verification: GitHub Actions run 42232482149 for commit 74d2bc30ca7b5191ee2ffdf632bfbb9965d7ff5a completed successfully: API integration tests, 9 mobile domain tests, dependency installation, TypeScript and Expo Android JavaScript export all passed. Follow-up commit dbb750917bc8f5a32d205085d9cb1de741933fc0 fixes Windows filesystem path resolution and requires a new CI pass. No APK or physical phone UI verification.
+
+## 2026-11-07 — Farmer RBAC + dashboard
+
+Repo audit: main head fe8b19e2fb5c052f492a1fd81e26b59c038db133 before this run; latest CI passed; no open issues. Skipped already-built landing, role preference, registration and login.
+- Feature 5: server-enforced Farmer authorization on GET /api/farmer/overview, 401/403 and ownership-scoped counts.
+- Feature 6: mobile FarmerDashboardScreen with server-provided name, actual request/trip counts, loading/error/retry/empty and logout.
+- Added integration tests for two Farmers, Driver denial, missing/revoked tokens and owner-scoped records. No request creation UI, PostgreSQL, APK or hosted backend.
+- CI outcomes and exact commit are reported after publication; physical-device testing remains unverified.
+Next: Farmer request creation with validation and durable storage, then request list and edit/cancel.

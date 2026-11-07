@@ -7,6 +7,7 @@ import { HomeScreen } from './src/screens/HomeScreen';
 import { RolesScreen } from './src/screens/RolesScreen';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { AccountScreen } from './src/screens/AccountScreen';
+import { FarmerDashboardScreen } from './src/screens/FarmerDashboardScreen';
 import { type AuthUser, type LoginResult, me, logout } from './src/auth/client';
 import { sessionStore } from './src/auth/session';
 import { COLORS } from './src/theme/palette';
@@ -78,7 +79,9 @@ export default function App() {
     </View>
     <View style={styles.content}>
       {authLoading ? <View style={styles.loading}><ActivityIndicator color={COLORS.forest}/><Text>Checking session...</Text></View> :
-        screen === 'account' && user ? <AccountScreen user={user} onLogout={signOut} busy={authBusy} error={authError}/> :
+        screen === 'account' && user ? (user.role === 'farmer' && token
+          ? <FarmerDashboardScreen token={token} onLogout={signOut} busy={authBusy} authError={authError} onSessionExpired={async () => { await sessionStore.clear(); setToken(null); setUser(null); setScreen('login'); }}/>
+          : <AccountScreen user={user} onLogout={signOut} busy={authBusy} error={authError}/>) :
         screen === 'register' || screen === 'login' ? <AuthScreen key={screen} initial={screen} onBack={()=>setScreen('home')} onAuthenticated={authenticated}/> :
         screen === 'roles' ? <RolesScreen selectedRole={selectedRole} isLoading={isLoading} storageWarning={storageWarning} onSelect={chooseRole} onClear={clearRole} onBack={()=>setScreen('home')}/> :
         <View style={styles.content}>
