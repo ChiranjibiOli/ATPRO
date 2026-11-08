@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { validateTransportRequest, createRequest } from './requests.js';
 import { newToken, newUser, normalizeEmail, passwordHash, passwordMatches, publicUser, tokenDigest, validateRegistration } from './auth.js';
 
 const respond = (res, status, data) => {
@@ -108,6 +109,30 @@ export function createApp({ store, now = () => Date.now(), limiter = createLimit
             activeTrips: trips.filter(t => ['accepted', 'in_transit'].includes(t.status)).length,
           },
         });
+      }
+      if (path === '/api/farmer/requests' && ['GET', 'POST'].includes(req.method)) {
+        const token = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(req.headers.authorization ?? '')?.[1];
+        if (!token) return respond(res, 401, { error: 'Authentication required.' });
+        const db = await store.read();
+        const session = db.sessions.find(s => s.tokenHash === tokenDigest(token) && Date.parse(s.expiresAt) > now());
+        const user = session && db.users.find(u => u.id === session.userId);
+        if (!user) return respond(res, 401, { error: 'Session expired.' });
+        if (user.role !== 'farmer') return respond(res, 403, { error: 'Farmer access required.' });
+        if (req.method === 'GET') {
+          const requests = (db.requests ?? []).filter(r => r.farmerId === user.id)
+            .sort((a,b) => b.createdAt.localeCompare(a.createdAt));
+          return respond(res, 200, { requests });
+        }
+        const data = await bodyJson(req);
+        const { fields, clean } = validateTransportRequest(data, now());
+        if (Object.keys(fields).length) return respond(res, 400, { error: 'Check the request fields.', fields });
+        const request = createRequest(clean, user.id, now());
+        await store.transaction(db2 => {
+          db2.requests ??= [];
+          db2.requests.push(request);
+          return { write: true };
+        });
+        return respond(res, 201, { request });
       }
       return respond(res, 404, { error: 'Not found.' });
     } catch (error) {
