@@ -1,28 +1,30 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ActionButton } from '../components/ActionButton';
-import { ApiError, farmerOverview, type FarmerOverview } from '../auth/client';
+import { ApiError, farmerOverview, farmerRequests, type TransportRequest, type FarmerOverview } from '../auth/client';
 import { COLORS } from '../theme/palette';
 
 type Props = {
   token: string;
+  onCreateRequest: () => void;
   onLogout: () => void;
   onSessionExpired: () => void;
   busy: boolean;
   authError: string | null;
 };
-export function FarmerDashboardScreen({ token, onLogout, onSessionExpired, busy, authError }: Props) {
+export function FarmerDashboardScreen({ token, onCreateRequest, onLogout, onSessionExpired, busy, authError }: Props) {
   const expiredRef = useRef(onSessionExpired);
   expiredRef.current = onSessionExpired;
   const [overview, setOverview] = useState<FarmerOverview | null>(null);
+  const [requests, setRequests] = useState<TransportRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const load = useCallback(async (active: () => boolean) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await farmerOverview(token);
-      if (active()) setOverview(result);
+      const [result, list] = await Promise.all([farmerOverview(token), farmerRequests(token)]);
+      if (active()) { setOverview(result); setRequests(list.requests); }
     } catch (e) {
       if (!active()) return;
       if (e instanceof ApiError && e.status === 401) {
@@ -51,9 +53,18 @@ export function FarmerDashboardScreen({ token, onLogout, onSessionExpired, busy,
           <Text style={styles.stat}>Requests pending: {overview.summary.pendingRequests}</Text>
           <Text style={styles.stat}>Active trips: {overview.summary.activeTrips}</Text>
           {overview.summary.totalRequests === 0 ?
-            <Text style={styles.empty}>You have not created any transport requests yet. Request creation is planned for the next development stage.</Text> : null}
+            <Text style={styles.empty}>You have not created any transport requests yet. Use Create transport request to submit your first pickup.</Text> : null}
         </View>
       ) : null}
+      {!loading && !error && overview ? <View style={styles.panel}>
+        <Text style={styles.section}>Your saved requests</Text>
+        {requests.length === 0 ? <Text style={styles.empty}>No transport requests saved yet.</Text> : requests.map(r=><View key={r.id} style={styles.request}>
+          <Text style={styles.requestTitle}>{r.productName} • {r.quantityKg} kg</Text>
+          <Text style={styles.stat}>{r.pickupAddress} → {r.marketName}</Text>
+          <Text style={styles.stat}>Pickup: {new Date(r.pickupAt).toLocaleString('en-NP', {timeZone:'Asia/Kathmandu'})} NPT • {r.status}</Text>
+        </View>)}
+      </View> : null}
+      {!loading && !error ? <ActionButton label="Create transport request" onPress={onCreateRequest}/> : null}
       {authError ? <Text accessibilityRole="alert" style={styles.error}>{authError}</Text> : null}
       <ActionButton label="Log out" variant="secondary" disabled={busy} onPress={onLogout}/>
     </ScrollView>
@@ -69,6 +80,8 @@ const styles = StyleSheet.create({
   section: { fontSize: 18, fontWeight: '700', color: COLORS.ink },
   stat: { fontSize: 15, color: COLORS.secondary },
   empty: { padding: 15, backgroundColor: COLORS.forestTint, color: COLORS.ink, fontSize: 14, lineHeight: 21, borderRadius: 10 },
+  request: { paddingVertical: 12, borderTopWidth: 1, borderColor: COLORS.line, gap: 6 },
+  requestTitle: { color: COLORS.ink, fontWeight: '700', fontSize: 15 },
   alert: { padding: 15, backgroundColor: COLORS.white, borderRadius: 12, gap: 10 },
   error: { color: '#A12727', fontSize: 14 },
 });

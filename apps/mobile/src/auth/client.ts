@@ -31,3 +31,22 @@ export type FarmerOverview = {
 };
 export const farmerOverview = (token: string) =>
   apiRequest<FarmerOverview>('/api/farmer/overview', 'GET', undefined, token);
+
+export type RequestInput = {
+  productName:string;
+  category:'vegetable'|'fruit'|'grain'|'other';
+  handling:'standard'|'fragile'|'chilled';
+  quantityKg:number;
+  pickupAddress:string;
+  marketName:string;
+  pickupDate:string;
+  pickupTime:string;
+  maxTransitHours:number;
+};
+export type TransportRequest = Omit<RequestInput,'pickupDate'|'pickupTime'> & {
+  id:string;farmerId:string;pickupAt:string;createdAt:string;status:'pending';
+};
+export const createFarmerRequest=(token:string,body:RequestInput)=>
+  apiRequest<{request:TransportRequest}>('/api/farmer/requests','POST',body,token);
+export const farmerRequests=(token:string)=>
+  apiRequest<{requests:TransportRequest[]}>('/api/farmer/requests','GET',undefined,token);

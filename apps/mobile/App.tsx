@@ -8,11 +8,12 @@ import { RolesScreen } from './src/screens/RolesScreen';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { AccountScreen } from './src/screens/AccountScreen';
 import { FarmerDashboardScreen } from './src/screens/FarmerDashboardScreen';
+import { CreateRequestScreen } from './src/screens/CreateRequestScreen';
 import { type AuthUser, type LoginResult, me, logout } from './src/auth/client';
 import { sessionStore } from './src/auth/session';
 import { COLORS } from './src/theme/palette';
 
-type Screen = 'home' | 'roles' | 'register' | 'login' | 'account';
+type Screen = 'home' | 'roles' | 'register' | 'login' | 'account' | 'createRequest';
 const preferenceStore = createRolePreferenceStore(AsyncStorage);
 
 export default function App() {
@@ -79,8 +80,9 @@ export default function App() {
     </View>
     <View style={styles.content}>
       {authLoading ? <View style={styles.loading}><ActivityIndicator color={COLORS.forest}/><Text>Checking session...</Text></View> :
+        screen === 'createRequest' && user?.role === 'farmer' && token ? <CreateRequestScreen token={token} onSaved={()=>setScreen('account')} onCancel={()=>setScreen('account')} onSessionExpired={async()=>{await sessionStore.clear();setToken(null);setUser(null);setScreen('login');}}/> :
         screen === 'account' && user ? (user.role === 'farmer' && token
-          ? <FarmerDashboardScreen token={token} onLogout={signOut} busy={authBusy} authError={authError} onSessionExpired={async () => { await sessionStore.clear(); setToken(null); setUser(null); setScreen('login'); }}/>
+          ? <FarmerDashboardScreen token={token} onCreateRequest={()=>setScreen('createRequest')} onLogout={signOut} busy={authBusy} authError={authError} onSessionExpired={async () => { await sessionStore.clear(); setToken(null); setUser(null); setScreen('login'); }}/>
           : <AccountScreen user={user} onLogout={signOut} busy={authBusy} error={authError}/>) :
         screen === 'register' || screen === 'login' ? <AuthScreen key={screen} initial={screen} onBack={()=>setScreen('home')} onAuthenticated={authenticated}/> :
         screen === 'roles' ? <RolesScreen selectedRole={selectedRole} isLoading={isLoading} storageWarning={storageWarning} onSelect={chooseRole} onClear={clearRole} onBack={()=>setScreen('home')}/> :
