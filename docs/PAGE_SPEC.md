@@ -144,3 +144,22 @@ Built items refer to implemented code, not an independently confirmed Android ru
 - States: loading spinner, zero-record explanation, populated counts, network/API error and retry, 401 session-expired returning to login.
 - Acceptance: no fake metrics, only own records, valid role navigation, successful Android JS export and TS typecheck.
 - Tests: backend integration of authorization and record counts; mobile build/typecheck CI. Physical device UI remains unverified.
+
+## 2026-11-08 planned before implementation: Farmer create request and persistence
+
+### Slice 7 — Farmer create transportation request API
+- Role/goal: authenticated Farmer submits one agricultural pickup request for exactly one market.
+- Fields: productName (2–80 chars), category enum vegetable/fruit/grain/other, handling enum standard/fragile/chilled, quantityKg (number >0 <= 50000), pickupAddress (5–200 chars), marketName (3–120 chars), pickupDate YYYY-MM-DD, pickupTime HH:mm in Nepal (+05:45), maxTransitHours integer 1–168. All required. No farmerId/status accepted from client.
+- Actions: POST /api/farmer/requests with JSON. Server validates and derives owner from authenticated session. GET /api/farmer/requests returns only own persisted requests newest-first.
+- Auth/flow: bearer session -> user -> Farmer role -> validate -> serialized JSON transaction -> response 201 {request}; GET -> 200 {requests}. Invalid fields 400 {error,fields}; missing/expired 401; non-Farmer 403; body >8KiB 413; storage failures 503.
+- Data: Requests {id,farmerId,productName,category,handling,quantityKg,pickupAddress,marketName,pickupAt,maxTransitHours,status:'pending',createdAt}; no trip/vehicle allocation yet.
+- States: empty list, loading, persisted list, invalid input, authorization denied, network/storage failure. Tests: invalid dates/weight, future window, extra injected owner/status ignored, cross-Farmer isolation, Driver denied, data survives new store instance.
+- Acceptance: validated request persists, belongs to authenticated Farmer and appears in Farmer overview and GET list; invalid requests never persist.
+
+### Slice 8 — Farmer mobile request form and dashboard integration
+- Role/goal: signed-in Farmer creates and reviews their own requests.
+- Fields: same API fields with explicit Nepal date/time format hints, accessible labels and field error messages; no GPS dependency.
+- Actions: Dashboard Create transport request -> form -> submit -> success dashboard refresh, Cancel -> dashboard, Retry dashboard after offline error, Logout.
+- API: POST /api/farmer/requests, GET /api/farmer/requests, existing GET /api/farmer/overview; bearer token from secure session.
+- UI states: form idle, invalid, submitting, failed (retain inputs), success; dashboard loading/empty/list/error/retry, session expiry to login. Only Farmer sees create action; server checks independently.
+- Acceptance/tests: UI integrates API and real counts; successful submission visible without restart; no fake matches or dead buttons. Backend integration and Android bundle/typecheck in CI; physical device remains unverified.

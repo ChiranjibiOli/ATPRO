@@ -40,3 +40,6 @@ Repo audit: main head fe8b19e2fb5c052f492a1fd81e26b59c038db133 before this run; 
 - Added integration tests for two Farmers, Driver denial, missing/revoked tokens and owner-scoped records. No request creation UI, PostgreSQL, APK or hosted backend.
 - CI outcomes and exact commit are reported after publication; physical-device testing remains unverified.
 Next: Farmer request creation with validation and durable storage, then request list and edit/cancel.
+
+## 2026-11-08 — planned pair before implementation
+Repository audit: 717e0d1bf793884689b1d67d14a9ed0fd529fe33, latest CI 42376669161 green, no open issues. Request creation absent. Planned pair: (1) Farmer-only validated request POST/GET with JSON persistence and owner isolation; (2) Expo Farmer request form and dashboard integration. Preserve existing registration/login and overview. Verify API integration tests, mobile domain tests, TS and Expo Android export before claiming success.
