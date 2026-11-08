@@ -21,3 +21,11 @@ App.tsx exposes Create account and Sign in. AuthScreen.tsx handles Farmer/Driver
 ## 2026-11-07 Farmer dashboard
 
 After login or session restore, App uses the authenticated user's server-supplied role. Farmer opens FarmerDashboardScreen; Driver/Admin remain in AccountScreen. FarmerDashboardScreen calls GET /api/farmer/overview with the bearer token. Server checks the session and role, then counts only requests owned by that Farmer and trips assigned to their requests. 401 clears the mobile token and navigates to login; 403/network failures show an error and retry control; zero records display an honest empty state. Logout uses the existing API session revocation flow.
+
+## 2026-11-08 Farmer request flow
+1. Authenticated Farmer dashboard calls GET /api/farmer/overview and GET /api/farmer/requests with its secure token; backend filters by authenticated user.
+2. Create transport request opens CreateRequestScreen; required product, category, handling, weight, pickup address, destination market, Nepal pickup date/time and max transit hours are entered. No fourth role or driver assignment.
+3. Form performs basic client checks, then POST /api/farmer/requests with bearer token. Backend rechecks session and Farmer role; validates all fields and future pickup time in Nepal local time; discards any injected farmerId/status.
+4. JsonStore.transaction appends server-generated pending request to db.requests, returning 201 with saved record. Validation failure returns 400 fields; 401 logs out expired session, 403 rejects non-Farmer, network failure retains form input.
+5. Success returns to Farmer dashboard. New mount fetches real counts and persisted requests; cancellation returns without saving. No driver is automatically assigned or accepted.
+6. API integration tests cover Nepal date parsing, invalid fields, unauthorized and Driver access, cross-Farmer isolation, injected owner/status ignored, persisted record and dashboard count update.
