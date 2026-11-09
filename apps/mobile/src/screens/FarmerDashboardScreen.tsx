@@ -7,13 +7,12 @@ import { COLORS } from '../theme/palette';
 type Props = {
   token: string;
   onCreateRequest: () => void;
-  onViewRequest: (id:string) => void;
   onLogout: () => void;
   onSessionExpired: () => void;
   busy: boolean;
   authError: string | null;
 };
-export function FarmerDashboardScreen({ token, onCreateRequest, onViewRequest, onLogout, onSessionExpired, busy, authError }: Props) {
+export function FarmerDashboardScreen({ token, onCreateRequest, onLogout, onSessionExpired, busy, authError }: Props) {
   const expiredRef = useRef(onSessionExpired);
   expiredRef.current = onSessionExpired;
   const [overview, setOverview] = useState<FarmerOverview | null>(null);
@@ -63,7 +62,6 @@ export function FarmerDashboardScreen({ token, onCreateRequest, onViewRequest, o
           <Text style={styles.requestTitle}>{r.productName} • {r.quantityKg} kg</Text>
           <Text style={styles.stat}>{r.pickupAddress} → {r.marketName}</Text>
           <Text style={styles.stat}>Pickup: {new Date(r.pickupAt).toLocaleString('en-NP', {timeZone:'Asia/Kathmandu'})} NPT • {r.status}</Text>
-          <ActionButton label={'View '+r.productName+' request'} variant="secondary" onPress={()=>onViewRequest(r.id)}/>
         </View>)}
       </View> : null}
       {!loading && !error ? <ActionButton label="Create transport request" onPress={onCreateRequest}/> : null}

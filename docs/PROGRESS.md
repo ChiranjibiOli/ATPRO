@@ -49,3 +49,6 @@ Implemented slice 7: apps/api/src/requests.js validation, POST/GET /api/farmer/r
 
 ## 2026-11-09 pre-implementation audit and plan
 Main 1591c84cdcaedc837322e4d21171887032701f1b; latest CI green, zero open issues. Previous request creation and list working. Selected two connected slices: Farmer request detail/edit and pending-request cancellation. Plan and complete page/API specifications recorded before code. Results to be appended after verification.
+
+### Implementation update — 2026-11-09
+Two connected features implemented and pushed in a4a813745567ba6d3eb4be51669ad26b1f0fc120: (1) Farmer request detail and editing with revision checks, (2) pending request cancellation with confirmation and retained status. Added GET/PATCH /api/farmer/requests/:id and POST /api/farmer/requests/:id/cancel. Protected by session, role and ownership checks. JSON store serializes writes and returns 409 for stale/non-pending requests. Mobile Farmer dashboard links to details, edit reuses the validated creation form, cancellation has explicit confirmation. Added API integration coverage for access control, validation, stale revision, persistence, cancellation and dashboard pending count. GitHub CI run 42631343390 evaluates API tests, mobile tests, TypeScript and Expo Android export. No APK or physical device verification. Next: Driver dashboard and vehicle registration.
