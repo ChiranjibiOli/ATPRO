@@ -134,6 +134,41 @@ export function createApp({ store, now = () => Date.now(), limiter = createLimit
         });
         return respond(res, 201, { request });
       }
+      const requestMatch = /^\/api\/farmer\/requests\/([0-9a-f-]{36})(?:\/(cancel))?$/.exec(path);
+      if (requestMatch && (req.method === 'GET' || req.method === 'PATCH' || req.method === 'POST')) {
+        const [, requestId, operation] = requestMatch;
+        if ((operation && req.method !== 'POST') || (!operation && req.method === 'POST')) return respond(res, 404, { error: 'Not found.' });
+        const token = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(req.headers.authorization ?? '')?.[1];
+        if (!token) return respond(res, 401, { error: 'Authentication required.' });
+        const db = await store.read();
+        const session = db.sessions.find(s => s.tokenHash === tokenDigest(token) && Date.parse(s.expiresAt) > now());
+        const user = session && db.users.find(u => u.id === session.userId);
+        if (!user) return respond(res, 401, { error: 'Session expired.' });
+        if (user.role !== 'farmer') return respond(res, 403, { error: 'Farmer access required.' });
+        const owned = (db.requests ?? []).find(r => r.id === requestId && r.farmerId === user.id);
+        if (!owned) return respond(res, 404, { error: 'Transport request not found.' });
+        if (req.method === 'GET') return respond(res, 200, { request: { ...owned, revision: owned.revision ?? 1 } });
+        const data = await bodyJson(req);
+        if (!Number.isSafeInteger(data?.revision) || data.revision < 1) return respond(res, 400, { error: 'Valid request revision is required.', fields: { revision: 'Refresh the request and try again.' } });
+        let clean;
+        if (!operation) {
+          const result = validateTransportRequest(data, now());
+          if (Object.keys(result.fields).length) return respond(res, 400, { error: 'Check the request fields.', fields: result.fields });
+          clean = result.clean;
+        }
+        const outcome = await store.transaction(db2 => {
+          const item = (db2.requests ?? []).find(r => r.id === requestId && r.farmerId === user.id);
+          if (!item) return { value: { status: 404, error: 'Transport request not found.' } };
+          if (item.status !== 'pending') return { value: { status: 409, error: 'Only pending requests can be changed.' } };
+          if ((item.revision ?? 1) !== data.revision) return { value: { status: 409, error: 'Request changed since you opened it. Reload before trying again.' } };
+          if (operation) item.status = 'cancelled';
+          else Object.assign(item, clean);
+          item.revision = (item.revision ?? 1) + 1;
+          item.updatedAt = new Date(now()).toISOString();
+          return { write: true, value: { status: 200, request: item } };
+        });
+        return outcome.status === 200 ? respond(res, 200, { request: outcome.request }) : respond(res, outcome.status, { error: outcome.error });
+      }
       return respond(res, 404, { error: 'Not found.' });
     } catch (error) {
       if (error.status === 400 || error.status === 413) return respond(res, error.status, { error: error.message });

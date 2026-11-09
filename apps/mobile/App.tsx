@@ -8,12 +8,13 @@ import { RolesScreen } from './src/screens/RolesScreen';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { AccountScreen } from './src/screens/AccountScreen';
 import { FarmerDashboardScreen } from './src/screens/FarmerDashboardScreen';
+import { RequestDetailScreen } from './src/screens/RequestDetailScreen';
 import { CreateRequestScreen } from './src/screens/CreateRequestScreen';
 import { type AuthUser, type LoginResult, me, logout } from './src/auth/client';
 import { sessionStore } from './src/auth/session';
 import { COLORS } from './src/theme/palette';
 
-type Screen = 'home' | 'roles' | 'register' | 'login' | 'account' | 'createRequest';
+type Screen = 'home' | 'roles' | 'register' | 'login' | 'account' | 'createRequest' | 'requestDetail' | 'editRequest';
 const preferenceStore = createRolePreferenceStore(AsyncStorage);
 
 export default function App() {
@@ -23,6 +24,8 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [requestId,setRequestId] = useState<string|null>(null);
+  const [editingRequest,setEditingRequest] = useState<import('./src/auth/client').TransportRequest|null>(null);
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [storageWarning, setStorageWarning] = useState<string | null>(null);
@@ -80,9 +83,11 @@ export default function App() {
     </View>
     <View style={styles.content}>
       {authLoading ? <View style={styles.loading}><ActivityIndicator color={COLORS.forest}/><Text>Checking session...</Text></View> :
+        screen === 'requestDetail' && user?.role === 'farmer' && token && requestId ? <RequestDetailScreen key={requestId} token={token} id={requestId} onBack={()=>setScreen('account')} onEdit={r=>{setEditingRequest(r);setScreen('editRequest');}} onSessionExpired={async()=>{await sessionStore.clear();setToken(null);setUser(null);setScreen('login');}}/> :
+        screen === 'editRequest' && user?.role === 'farmer' && token && editingRequest ? <CreateRequestScreen key={editingRequest.id+'-'+editingRequest.revision} token={token} editing={editingRequest} onSaved={()=>{setEditingRequest(null);setScreen('requestDetail');}} onCancel={()=>{setEditingRequest(null);setScreen('requestDetail');}} onSessionExpired={async()=>{await sessionStore.clear();setToken(null);setUser(null);setScreen('login');}}/> :
         screen === 'createRequest' && user?.role === 'farmer' && token ? <CreateRequestScreen token={token} onSaved={()=>setScreen('account')} onCancel={()=>setScreen('account')} onSessionExpired={async()=>{await sessionStore.clear();setToken(null);setUser(null);setScreen('login');}}/> :
         screen === 'account' && user ? (user.role === 'farmer' && token
-          ? <FarmerDashboardScreen token={token} onCreateRequest={()=>setScreen('createRequest')} onLogout={signOut} busy={authBusy} authError={authError} onSessionExpired={async () => { await sessionStore.clear(); setToken(null); setUser(null); setScreen('login'); }}/>
+          ? <FarmerDashboardScreen token={token} onCreateRequest={()=>setScreen('createRequest')} onViewRequest={id=>{setRequestId(id);setScreen('requestDetail');}} onLogout={signOut} busy={authBusy} authError={authError} onSessionExpired={async () => { await sessionStore.clear(); setToken(null); setUser(null); setScreen('login'); }}/>
           : <AccountScreen user={user} onLogout={signOut} busy={authBusy} error={authError}/>) :
         screen === 'register' || screen === 'login' ? <AuthScreen key={screen} initial={screen} onBack={()=>setScreen('home')} onAuthenticated={authenticated}/> :
         screen === 'roles' ? <RolesScreen selectedRole={selectedRole} isLoading={isLoading} storageWarning={storageWarning} onSelect={chooseRole} onClear={clearRole} onBack={()=>setScreen('home')}/> :
