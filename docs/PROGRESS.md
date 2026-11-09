@@ -46,3 +46,6 @@ Repository audit: 717e0d1bf793884689b1d67d14a9ed0fd529fe33, latest CI 4237666916
 
 ### Implementation update, 2026-11-08
 Implemented slice 7: apps/api/src/requests.js validation, POST/GET /api/farmer/requests, serialized JSON persistence, session and Farmer role guard, ownership-scoped listing, Nepal date/time conversion. Implemented slice 8: mobile CreateRequestScreen, authenticated submit/cancel, field errors, dashboard navigation and reload of real saved requests and counts. New tests in apps/api/tests/requests.test.js. API commit 929d66e3c3cc5b26d98b9b490b3901429e4d71b8; mobile commit 7ba14cf7df25ecaf994cbea7ce9c5f59a54025fb. Physical-device test, APK and public HTTPS preview are NOT verified. Next two features: request list detail + edit/cancel with owner/state/version checks; these are not yet implemented.
+
+## 2026-11-09 pre-implementation audit and plan
+Main 1591c84cdcaedc837322e4d21171887032701f1b; latest CI green, zero open issues. Previous request creation and list working. Selected two connected slices: Farmer request detail/edit and pending-request cancellation. Plan and complete page/API specifications recorded before code. Results to be appended after verification.
