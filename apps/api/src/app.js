@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { validateVehicle, createVehicle } from './vehicles.js';
 import { validateTransportRequest, createRequest } from './requests.js';
 import { newToken, newUser, normalizeEmail, passwordHash, passwordMatches, publicUser, tokenDigest, validateRegistration } from './auth.js';
 
@@ -133,6 +134,32 @@ export function createApp({ store, now = () => Date.now(), limiter = createLimit
           return { write: true };
         });
         return respond(res, 201, { request });
+      }
+      if ((path === '/api/driver/overview' && req.method === 'GET') ||
+          (path === '/api/driver/vehicles' && ['GET','POST'].includes(req.method))) {
+        const token = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(req.headers.authorization ?? '')?.[1];
+        if (!token) return respond(res,401,{error:'Authentication required.'});
+        const db = await store.read();
+        const session = db.sessions.find(s=>s.tokenHash===tokenDigest(token)&&Date.parse(s.expiresAt)>now());
+        const user = session && db.users.find(u=>u.id===session.userId);
+        if (!user) return respond(res,401,{error:'Session expired.'});
+        if (user.role !== 'driver') return respond(res,403,{error:'Driver access required.'});
+        if (req.method === 'GET') {
+          const vehicles=(db.vehicles??[]).filter(v=>v.driverId===user.id).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+          if (path.endsWith('overview')) return respond(res,200,{user:publicUser(user),summary:{totalVehicles:vehicles.length},vehicles});
+          return respond(res,200,{vehicles});
+        }
+        const data=await bodyJson(req);
+        const {fields,clean}=validateVehicle(data);
+        if (Object.keys(fields).length) return respond(res,400,{error:'Check the vehicle fields.',fields});
+        const result=await store.transaction(db2=>{
+          db2.vehicles??=[];
+          if(db2.vehicles.some(v=>v.registrationPlate===clean.registrationPlate)) return {value:null};
+          const vehicle=createVehicle(clean,user.id,now());
+          db2.vehicles.push(vehicle);
+          return {write:true,value:vehicle};
+        });
+        return result ? respond(res,201,{vehicle:result}) : respond(res,409,{error:'Vehicle registration plate already exists.'});
       }
       return respond(res, 404, { error: 'Not found.' });
     } catch (error) {
