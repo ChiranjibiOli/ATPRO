@@ -9,11 +9,13 @@ import { AuthScreen } from './src/screens/AuthScreen';
 import { AccountScreen } from './src/screens/AccountScreen';
 import { FarmerDashboardScreen } from './src/screens/FarmerDashboardScreen';
 import { CreateRequestScreen } from './src/screens/CreateRequestScreen';
+import { DriverDashboardScreen } from './src/screens/DriverDashboardScreen';
+import { RegisterVehicleScreen } from './src/screens/RegisterVehicleScreen';
 import { type AuthUser, type LoginResult, me, logout } from './src/auth/client';
 import { sessionStore } from './src/auth/session';
 import { COLORS } from './src/theme/palette';
 
-type Screen = 'home' | 'roles' | 'register' | 'login' | 'account' | 'createRequest';
+type Screen = 'home' | 'roles' | 'register' | 'login' | 'account' | 'createRequest' | 'registerVehicle';
 const preferenceStore = createRolePreferenceStore(AsyncStorage);
 
 export default function App() {
@@ -80,10 +82,11 @@ export default function App() {
     </View>
     <View style={styles.content}>
       {authLoading ? <View style={styles.loading}><ActivityIndicator color={COLORS.forest}/><Text>Checking session...</Text></View> :
+        screen === 'registerVehicle' && user?.role === 'driver' && token ? <RegisterVehicleScreen token={token} onSaved={()=>setScreen('account')} onCancel={()=>setScreen('account')} onExpired={async()=>{await sessionStore.clear();setToken(null);setUser(null);setScreen('login');}}/> :
         screen === 'createRequest' && user?.role === 'farmer' && token ? <CreateRequestScreen token={token} onSaved={()=>setScreen('account')} onCancel={()=>setScreen('account')} onSessionExpired={async()=>{await sessionStore.clear();setToken(null);setUser(null);setScreen('login');}}/> :
         screen === 'account' && user ? (user.role === 'farmer' && token
           ? <FarmerDashboardScreen token={token} onCreateRequest={()=>setScreen('createRequest')} onLogout={signOut} busy={authBusy} authError={authError} onSessionExpired={async () => { await sessionStore.clear(); setToken(null); setUser(null); setScreen('login'); }}/>
-          : <AccountScreen user={user} onLogout={signOut} busy={authBusy} error={authError}/>) :
+          : user.role === 'driver' && token ? <DriverDashboardScreen token={token} onRegister={()=>setScreen('registerVehicle')} onLogout={signOut} busy={authBusy} error={authError} onExpired={async()=>{await sessionStore.clear();setToken(null);setUser(null);setScreen('login');}}/> : <AccountScreen user={user} onLogout={signOut} busy={authBusy} error={authError}/>) :
         screen === 'register' || screen === 'login' ? <AuthScreen key={screen} initial={screen} onBack={()=>setScreen('home')} onAuthenticated={authenticated}/> :
         screen === 'roles' ? <RolesScreen selectedRole={selectedRole} isLoading={isLoading} storageWarning={storageWarning} onSelect={chooseRole} onClear={clearRole} onBack={()=>setScreen('home')}/> :
         <View style={styles.content}>

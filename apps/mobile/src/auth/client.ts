@@ -50,3 +50,8 @@ export const createFarmerRequest=(token:string,body:RequestInput)=>
   apiRequest<{request:TransportRequest}>('/api/farmer/requests','POST',body,token);
 export const farmerRequests=(token:string)=>
   apiRequest<{requests:TransportRequest[]}>('/api/farmer/requests','GET',undefined,token);
+
+export type Vehicle={id:string;driverId:string;registrationPlate:string;vehicleType:'bike'|'mini_truck'|'truck';bodyType:'open'|'covered'|'refrigerated';maximumWeightKg:number;maximumVolumeM3:number|null;status:'registered';createdAt:string};
+export type DriverOverview={user:AuthUser;summary:{totalVehicles:number};vehicles:Vehicle[]};
+export const driverOverview=(token:string)=>apiRequest<DriverOverview>('/api/driver/overview','GET',undefined,token);
+export const registerVehicle=(token:string,body:{registrationPlate:string;vehicleType:Vehicle['vehicleType'];bodyType:Vehicle['bodyType'];maximumWeightKg:number;maximumVolumeM3?:number})=>apiRequest<{vehicle:Vehicle}>('/api/driver/vehicles','POST',body,token);
