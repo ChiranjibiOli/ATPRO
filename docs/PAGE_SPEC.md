@@ -182,3 +182,21 @@ Role: Driver. Goal: see own real vehicle count and registered vehicle summaries,
 Role: Driver. Goal: record a usable vehicle for future matching. UI fields: registration plate, vehicle type (bike/mini_truck/truck), body (open/covered/refrigerated), maximumWeightKg, optional maximumVolumeM3. Actions: enter, select, submit, cancel, return to dashboard. States: initial, invalid fields, submitting, duplicate plate, success, offline/retry. API: POST /api/driver/vehicles -> 201 {vehicle}; GET /api/driver/vehicles -> 200 {vehicles}; invalid 400 {fields}, duplicate 409, auth 401, role 403, storage 503. Data: vehicles[] with server-generated id, driverId, status 'registered', timestamp; never auto-approved for matching. Validation: plate normalized uppercase (3-20 safe characters), positive finite kg <= 50000, optional finite m³ >0 <= 200, strict vehicle/body enums; reject invalid combinations (refrigerated bike). Authorization: driverId from authenticated session only. Acceptance: persistence, duplicates blocked across Drivers, injection of owner/approval ignored. Tests: invalid payloads, duplicate plate, persistence, role isolation, no self-approved vehicles.
 
 Before implementation: preserve three roles, single-market routing requirements, and existing Farmer flow; no matching/booking claims. Implement only these two connected slices and require API tests, mobile tests, TS and Android Expo bundle CI.
+
+## 2026-11-11 pre-code contract: restore Farmer request lifecycle (two slices)
+
+Audit: current main tree contains Farmer request create/list but NO GET/PATCH/cancel request-detail API and NO RequestDetailScreen despite older documentation claiming implementation. This is a regression, not a completed feature. Restore exactly two connected slices without rebuilding existing create/list or Driver vehicle features.
+
+### Slice A: Farmer request details and editing
+- Role/goal: authenticated Farmer views own saved request and edits only pending request.
+- UI: request detail screen shows product, category, handling, kg, pickup, market, Nepal pickup time, maximum transit, status and revision; Edit opens existing request form prefilled. States: loading, missing/forbidden, network error with retry, pending editable, cancelled read-only, editing/submitting, validation errors, revision conflict.
+- Actions: open request, edit, save, back, retry. Required input same as existing create form, with revision integer >=1 on PATCH; server validates product/category/handling/quantity/address/market/Nepal date/time/maxTransitHours.
+- Authorization/data: bearer session, Farmer role, farmerId from server session, owner-scoped Request; never trust supplied farmerId/status. No edit after assignment/status transition.
+- APIs: GET /api/farmer/requests/:id -> 200 {request}, 401/403/404; PATCH /api/farmer/requests/:id {revision,productName,category,handling,quantityKg,pickupAddress,marketName,pickupDate,pickupTime,maxTransitHours} -> 200 {request}; 400 field validation, 409 stale/non-pending, 404 non-owner, 503 storage failure. JSON transaction checks revision/status atomically; updatedAt/revision increment.
+- Acceptance/tests: own GET and PATCH persist across restart; another Farmer 404, Driver 403, missing token 401, invalid fields 400, stale revision 409, cancelled 409. Mobile TS/Expo bundle and navigation check in CI; physical phone unverified.
+
+### Slice B: Pending request cancellation
+- Role/goal: Farmer cancels an unassigned pending request without deleting history.
+- UI: same detail screen has Cancel request action, explicit confirmation alert, busy/error states; cancelled request shows status and disables edit/cancel. User can return to refreshed dashboard.
+- Actions: confirm or dismiss, cancel with expected revision. API POST /api/farmer/requests/:id/cancel {revision} -> 200 {request} (status cancelled, revision increment, updatedAt), 400 missing revision, 401/403/404, 409 stale/non-pending. Serialized transaction ensures atomic status/revision check; no driver booking exists yet.
+- Acceptance/tests: confirmation required in UI; cancel persists and overview pending count falls; repeat cancel/edit rejected, other owner inaccessible, no deletion, server-generated status only.
