@@ -63,3 +63,6 @@ Acceptance: 401 missing/expired, 403 driver, 404 other Farmer, 409 stale/assigne
 
 ## 2026-11-11 selected pair (plan recorded before code)
 HEAD 7f64d5093ddda58b1a00a8295040d5ab99802ea3, latest CI green, no open issues. Source tree audit confirms Farmer create/list and Driver dashboard/registration are present but Farmer detail/edit/cancel were lost. First restore authenticated GET/PATCH request detail with revision conflict and prefilled mobile form. Second restore pending-only cancellation with explicit UI confirmation, persisted status, dashboard refresh and tests. Preserve all other code. Run API and mobile tests, TypeScript and Expo Android export; do not claim APK or public preview.
+
+## 2026-11-11 implementation follow-up
+Two previously missing Farmer lifecycle slices restored: request details/edit with owner-scoped GET/PATCH and optimistic revision, plus pending-only cancellation with confirmation and durable retained status. Driver availability and capacity remain the next two features; do not rebuild Farmer request creation, registration or Driver vehicle registration. Require API tests, mobile tests, TypeScript and Expo Android export before declaring verified.
