@@ -136,7 +136,12 @@ export function createApp({ store, now = () => Date.now(), limiter = createLimit
         return respond(res, 201, { request });
       }
       // Farmer-owned request lifecycle: do not reveal the existence of another farmer's ID.
-      const detailMatch = new RegExp('^/api/farmer/requests/([0-9a-f-]{36})(/cancel)?
+      const parts = path.split('/');
+      const detailMatch = parts.length >= 5 && parts.length <= 6 &&
+        parts[1] === 'api' && parts[2] === 'farmer' && parts[3] === 'requests' &&
+        /^[0-9a-f-]{36}/.test(parts[4]) && parts[4].length === 36 &&
+        (parts.length === 5 || parts[5] === 'cancel')
+        ? [null, parts[4], parts.length === 6 ? '/cancel' : undefined] : null;
       if (detailMatch && ((req.method === 'GET' && !detailMatch[2]) ||
           (req.method === 'PATCH' && !detailMatch[2]) ||
           (req.method === 'POST' && detailMatch[2] === '/cancel'))) {
