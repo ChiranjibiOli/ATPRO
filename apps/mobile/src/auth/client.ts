@@ -9,7 +9,7 @@ export function apiBase() {
   if (!url) throw new ApiError(0, 'API address is not configured. Set EXPO_PUBLIC_API_URL to your laptop LAN address.');
   return url.replace(/\/$/, '');
 }
-export async function apiRequest<T>(path: string, method: 'GET'|'POST', body?: object, token?: string): Promise<T> {
+export async function apiRequest<T>(path: string, method: 'GET'|'POST'|'PATCH', body?: object, token?: string): Promise<T> {
   const response = await fetch(apiBase() + path, {
     method,
     headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: 'Bearer ' + token } : {}) },
@@ -44,12 +44,19 @@ export type RequestInput = {
   maxTransitHours:number;
 };
 export type TransportRequest = Omit<RequestInput,'pickupDate'|'pickupTime'> & {
-  id:string;farmerId:string;pickupAt:string;createdAt:string;status:'pending';
+  id:string;farmerId:string;pickupAt:string;createdAt:string;status:'pending'|'cancelled';revision:number;updatedAt?:string;
 };
 export const createFarmerRequest=(token:string,body:RequestInput)=>
   apiRequest<{request:TransportRequest}>('/api/farmer/requests','POST',body,token);
 export const farmerRequests=(token:string)=>
   apiRequest<{requests:TransportRequest[]}>('/api/farmer/requests','GET',undefined,token);
+export const farmerRequestDetail=(token:string,id:string)=>
+  apiRequest<{request:TransportRequest}>('/api/farmer/requests/'+encodeURIComponent(id),'GET',undefined,token);
+export const updateFarmerRequest=(token:string,id:string,revision:number,body:RequestInput)=>
+  apiRequest<{request:TransportRequest}>('/api/farmer/requests/'+encodeURIComponent(id),'PATCH',{...body,revision},token);
+export const cancelFarmerRequest=(token:string,id:string,revision:number)=>
+  apiRequest<{request:TransportRequest}>('/api/farmer/requests/'+encodeURIComponent(id)+'/cancel','POST',{revision},token);
+
 
 export type Vehicle={id:string;driverId:string;registrationPlate:string;vehicleType:'bike'|'mini_truck'|'truck';bodyType:'open'|'covered'|'refrigerated';maximumWeightKg:number;maximumVolumeM3:number|null;status:'registered';createdAt:string};
 export type DriverOverview={user:AuthUser;summary:{totalVehicles:number};vehicles:Vehicle[]};

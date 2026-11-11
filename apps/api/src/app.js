@@ -135,6 +135,45 @@ export function createApp({ store, now = () => Date.now(), limiter = createLimit
         });
         return respond(res, 201, { request });
       }
+      // Farmer-owned request lifecycle: do not reveal the existence of another farmer's ID.
+      const detailMatch = /^\\/api\\/farmer\\/requests\\/([0-9a-f-]{36})(\\/cancel)?$/.exec(path);
+      if (detailMatch && ((req.method === 'GET' && !detailMatch[2]) ||
+          (req.method === 'PATCH' && !detailMatch[2]) ||
+          (req.method === 'POST' && detailMatch[2] === '/cancel'))) {
+        const token = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(req.headers.authorization ?? '')?.[1];
+        if (!token) return respond(res, 401, { error: 'Authentication required.' });
+        const db = await store.read();
+        const session = db.sessions.find(s => s.tokenHash === tokenDigest(token) && Date.parse(s.expiresAt) > now());
+        const user = session && db.users.find(u => u.id === session.userId);
+        if (!user) return respond(res, 401, { error: 'Session expired.' });
+        if (user.role !== 'farmer') return respond(res, 403, { error: 'Farmer access required.' });
+        const own = (db.requests ?? []).find(r => r.id === detailMatch[1] && r.farmerId === user.id);
+        if (!own) return respond(res, 404, { error: 'Request not found.' });
+        if (req.method === 'GET') return respond(res, 200, { request: { ...own, revision: own.revision ?? 1 } });
+        const input = await bodyJson(req);
+        if (!Number.isSafeInteger(input?.revision) || input.revision < 1)
+          return respond(res, 400, { error: 'A valid request revision is required.', fields: { revision: 'Revision must be a positive integer.' } });
+        let clean;
+        if (req.method === 'PATCH') {
+          const validation = validateTransportRequest(input, now());
+          if (Object.keys(validation.fields).length)
+            return respond(res, 400, { error: 'Check the request fields.', fields: validation.fields });
+          clean = validation.clean;
+        }
+        const outcome = await store.transaction(data => {
+          const current = (data.requests ?? []).find(r => r.id === detailMatch[1] && r.farmerId === user.id);
+          if (!current) return { value: { status: 404, error: 'Request not found.' } };
+          if (current.status !== 'pending' || (current.revision ?? 1) !== input.revision)
+            return { value: { status: 409, error: 'Request changed or is no longer pending. Reload details.' } };
+          if (req.method === 'PATCH') Object.assign(current, clean);
+          else current.status = 'cancelled';
+          current.revision = (current.revision ?? 1) + 1;
+          current.updatedAt = new Date(now()).toISOString();
+          return { write: true, value: { status: 200, request: current } };
+        });
+        return outcome.status === 200 ? respond(res, 200, { request: outcome.request })
+          : respond(res, outcome.status, { error: outcome.error });
+      }
       if ((path === '/api/driver/overview' && req.method === 'GET') ||
           (path === '/api/driver/vehicles' && ['GET','POST'].includes(req.method))) {
         const token = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(req.headers.authorization ?? '')?.[1];

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ActionButton } from '../components/ActionButton';
-import { ApiError, createFarmerRequest, type RequestInput } from '../auth/client';
+import { ApiError, createFarmerRequest, updateFarmerRequest, type TransportRequest, type RequestInput } from '../auth/client';
 import { COLORS } from '../theme/palette';
 
-type Props = { token:string; onSaved:()=>void; onCancel:()=>void; onSessionExpired:()=>void };
+type Props = { token:string; onSaved:()=>void; onCancel:()=>void; onSessionExpired:()=>void; existing?:TransportRequest };
 type Field = keyof RequestInput;
 const categories = ['vegetable','fruit','grain','other'] as const;
 const handlingOptions = ['standard','fragile','chilled'] as const;
@@ -12,10 +12,16 @@ const initial: RequestInput = {
   productName:'', category:'vegetable', handling:'standard', quantityKg:0,
   pickupAddress:'',marketName:'',pickupDate:'',pickupTime:'',maxTransitHours:24,
 };
-export function CreateRequestScreen({token,onSaved,onCancel,onSessionExpired}:Props) {
-  const [form,setForm]=useState<RequestInput>(initial);
-  const [weight,setWeight]=useState('');
-  const [transit,setTransit]=useState('24');
+export function CreateRequestScreen({token,onSaved,onCancel,onSessionExpired,existing}:Props) {
+  const [form,setForm]=useState<RequestInput>(()=>existing ? {
+    productName:existing.productName,category:existing.category,handling:existing.handling,quantityKg:existing.quantityKg,
+    pickupAddress:existing.pickupAddress,marketName:existing.marketName,
+    pickupDate:new Date(Date.parse(existing.pickupAt)+345*60_000).toISOString().slice(0,10),
+    pickupTime:new Date(Date.parse(existing.pickupAt)+345*60_000).toISOString().slice(11,16),
+    maxTransitHours:existing.maxTransitHours
+  }:initial);
+  const [weight,setWeight]=useState(existing ? String(existing.quantityKg) : '');
+  const [transit,setTransit]=useState(existing ? String(existing.maxTransitHours) : '24');
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState<string|null>(null);
   const [fields,setFields]=useState<Record<string,string>>({});
@@ -34,7 +40,7 @@ export function CreateRequestScreen({token,onSaved,onCancel,onSessionExpired}:Pr
     if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(form.pickupTime)) local.pickupTime='Use HH:mm (24-hour).';
     if(Object.keys(local).length){setFields(local);return;}
     setBusy(true);
-    try {await createFarmerRequest(token,input);onSaved();}
+    try {if(existing) await updateFarmerRequest(token,existing.id,existing.revision,input); else await createFarmerRequest(token,input);onSaved();}
     catch(e) {
       if(e instanceof ApiError && e.status===401){onSessionExpired();return;}
       if(e instanceof ApiError){setError(e.message);setFields(e.fields??{});}
@@ -71,8 +77,8 @@ export function CreateRequestScreen({token,onSaved,onCancel,onSessionExpired}:Pr
     </View>
   );
   return <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
-    <Text style={styles.kicker}>FARMER • NEW TRANSPORT REQUEST</Text>
-    <Text style={styles.title}>Arrange a produce pickup</Text>
+    <Text style={styles.kicker}>{existing ? 'FARMER • EDIT REQUEST' : 'FARMER • NEW TRANSPORT REQUEST'}</Text>
+    <Text style={styles.title}>{existing ? 'Update your pending pickup' : 'Arrange a produce pickup'}</Text>
     <Text style={styles.help}>One destination market per request. Enter your preferred pickup date and time in Nepal time (NPT, UTC+05:45). A driver has not been assigned yet.</Text>
     {field('Product name','productName','e.g. Tomatoes')}
     {choices('Product category','category',categories)}
@@ -86,7 +92,7 @@ export function CreateRequestScreen({token,onSaved,onCancel,onSessionExpired}:Pr
     {fields.pickupDate && !fields.pickupTime ? <Text style={styles.error}>Check the pickup date and time.</Text>:null}
     {error?<Text accessibilityRole="alert" style={styles.error}>{error}</Text>:null}
     {busy?<View style={styles.progress}><ActivityIndicator color={COLORS.forest}/><Text>Saving request...</Text></View>:null}
-    <ActionButton label="Submit transport request" disabled={busy} onPress={()=>void submit()}/>
+    <ActionButton label={existing ? "Save request changes" : "Submit transport request"} disabled={busy} onPress={()=>void submit()}/>
     <ActionButton label="Cancel and return to dashboard" disabled={busy} variant="secondary" onPress={onCancel}/>
   </ScrollView>;
 }

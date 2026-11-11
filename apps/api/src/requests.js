@@ -46,5 +46,5 @@ export function validateTransportRequest(data, now = Date.now()) {
   };
 }
 export function createRequest(clean, farmerId, now = Date.now()) {
-  return { id: randomUUID(), farmerId, ...clean, status: 'pending', createdAt: new Date(now).toISOString() };
+  return { id: randomUUID(), farmerId, ...clean, status: 'pending', revision: 1, createdAt: new Date(now).toISOString() };
 }
