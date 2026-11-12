@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { validateVehicle, createVehicle } from './vehicles.js';
+import { validateAvailability, validateEligibilityQuery, previewVehicleEligibility } from './availability.js';
 import { validateTransportRequest, createRequest } from './requests.js';
 import { newToken, newUser, normalizeEmail, passwordHash, passwordMatches, publicUser, tokenDigest, validateRegistration } from './auth.js';
 
@@ -204,6 +205,44 @@ export function createApp({ store, now = () => Date.now(), limiter = createLimit
           return {write:true,value:vehicle};
         });
         return result ? respond(res,201,{vehicle:result}) : respond(res,409,{error:'Vehicle registration plate already exists.'});
+      }
+
+      const driverVehicleRoute = /^\/api\/driver\/vehicles\/([0-9a-f-]{36})\/(availability|eligibility)$/.exec(path);
+      if ((path === '/api/driver/availability' && req.method === 'GET') ||
+          (driverVehicleRoute && ((driverVehicleRoute[2] === 'availability' && req.method === 'POST') ||
+            (driverVehicleRoute[2] === 'eligibility' && req.method === 'GET')))) {
+        const token = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(req.headers.authorization ?? '')?.[1];
+        if (!token) return respond(res,401,{error:'Authentication required.'});
+        const db = await store.read();
+        const session=db.sessions.find(s=>s.tokenHash===tokenDigest(token)&&Date.parse(s.expiresAt)>now());
+        const user=session&&db.users.find(u=>u.id===session.userId);
+        if (!user) return respond(res,401,{error:'Session expired.'});
+        if (user.role!=='driver') return respond(res,403,{error:'Driver access required.'});
+        if (!driverVehicleRoute) {
+          return respond(res,200,{availability:(db.availability??[]).filter(a=>a.driverId===user.id)});
+        }
+        const vehicle=(db.vehicles??[]).find(v=>v.id===driverVehicleRoute[1]&&v.driverId===user.id);
+        if (!vehicle) return respond(res,404,{error:'Vehicle not found.'});
+        if (driverVehicleRoute[2]==='eligibility') {
+          const {fields,clean}=validateEligibilityQuery(new URL(req.url,'http://localhost').searchParams);
+          if (Object.keys(fields).length) return respond(res,400,{error:'Check eligibility fields.',fields});
+          const declaration=(db.availability??[]).find(a=>a.vehicleId===vehicle.id&&a.date===clean.date);
+          return respond(res,200,{vehicleId:vehicle.id,...previewVehicleEligibility(vehicle,declaration,clean,now())});
+        }
+        const input=await bodyJson(req);
+        const {fields,clean}=validateAvailability(input,now());
+        if (Object.keys(fields).length) return respond(res,400,{error:'Check availability fields.',fields});
+        const saved=await store.transaction(data=>{
+          const owned=(data.vehicles??[]).some(v=>v.id===vehicle.id&&v.driverId===user.id);
+          if (!owned) return {value:null};
+          data.availability??=[];
+          const existing=data.availability.find(a=>a.vehicleId===vehicle.id&&a.date===clean.date);
+          const declaration={vehicleId:vehicle.id,driverId:user.id,...clean,updatedAt:new Date(now()).toISOString()};
+          if (existing) Object.assign(existing,declaration);
+          else data.availability.push(declaration);
+          return {write:true,value:declaration};
+        });
+        return saved ? respond(res,200,{availability:saved}) : respond(res,404,{error:'Vehicle not found.'});
       }
       return respond(res, 404, { error: 'Not found.' });
     } catch (error) {
