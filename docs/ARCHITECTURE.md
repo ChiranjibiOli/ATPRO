@@ -81,3 +81,10 @@ Current HEAD lacks the Farmer request lifecycle APIs and mobile detail screen de
 
 ### 2026-11-11 lifecycle restoration implementation
 Farmer request details are owner-scoped at GET /api/farmer/requests/:id. PATCH uses full validated request input and optimistic revision, while POST /api/farmer/requests/:id/cancel performs a pending-to-cancelled transition. Both mutations re-check ownership, pending status and revision inside JsonStore.transaction. The mobile details screen displays persisted values; editing reuses the existing validated request form and cancellation uses a destructive confirmation dialog. Driver registration and other modules remain unchanged. This is still a single-process JSON prototype.
+
+
+## 2026-11-12 Driver availability and preliminary eligibility
+
+The local JSON database adds availability[] records {vehicleId,driverId,date,startTime,endTime,startAddress,updatedAt}. A declaration is keyed by vehicle/date and replaced transactionally in one API process. Date and clock fields are Nepal local; validation uses explicit Nepal offset and rejects impossible dates, past end times, overnight windows and excessively distant dates. Starting address is declared text, not verified GPS or coordinates. Multiple dates can be stored per vehicle; only one window per vehicle/date in this iteration.
+
+GET /api/driver/availability and POST /api/driver/vehicles/:id/availability are Driver-only with session and vehicle ownership checks. The preview GET /api/driver/vehicles/:id/eligibility uses vehicle maximumWeightKg, status and declared window. It is a nonbinding read-only check; no capacity reservation, approval, time-window conflict locking, market grouping, product/handling/perishability/volume, OSRM route, or trip is created. Future matching must enforce all those constraints in a transactional allocation pipeline and revalidate at driver acceptance. Existing three roles unchanged. Single-process JsonStore is not safe for production multi-instance concurrency.

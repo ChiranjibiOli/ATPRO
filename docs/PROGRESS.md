@@ -61,3 +61,13 @@ Repository main 7f64d5093ddda58b1a00a8295040d5ab99802ea3; last CI 42827133816 pa
 
 ### 2026-11-11 implementation update
 Restored two previously documented but absent Farmer request lifecycle slices: detail/edit and pending-only cancellation. API now supports owner-scoped GET/PATCH /api/farmer/requests/:id and POST /api/farmer/requests/:id/cancel. Mobile adds RequestDetailScreen, detail navigation, prefilled form edit and confirmation before cancellation. Requests carry revision=1 at creation; legacy records default to revision 1; edits and cancellation increment revision with updatedAt. New tests cover ownership, role, 400/401/403/404/409, stale revision, persisted cancellation and pending count. Implementation commit bb6f9ee7e60c6d41ff6c1a8f83a6e81c7856197d; GitHub Actions run 43035538661. Earlier intermediate commits failed because of a malformed route parser; corrected before release. No physical-device testing, APK, production database or public preview. Next pair: Driver availability date/time windows + declared start location, then capacity/availability eligibility for offers.
+
+
+## 2026-11-12 — Driver availability and preliminary eligibility
+Pre-implementation audit: main 7d234d3923c533d6702be76cf8556dfb84a78e9f; prior CI successful; zero open issues. Existing Driver dashboard, vehicle registration and Farmer lifecycle present; no availability or eligibility APIs/screens. Implementation plan recorded first in DEVELOPMENT_PLAN.md commit d38e56b8a903cb9cbed99cb93b8cedac2a03a535.
+
+Slice 15: DriverAvailabilityScreen supports owned vehicle selection, date/time window, declared start address, saved declaration list and save/replace; API GET /api/driver/availability and POST /api/driver/vehicles/:id/availability with validation, Driver role, ownership and JSON persistence.
+
+Slice 16: preliminary driver-only eligibility preview GET /api/driver/vehicles/:id/eligibility checks weight and declared time window; mobile screen displays actual result and reasons. It does not imply an offer, booking, approved vehicle or compatibility with any product. Added API integration and unit tests for invalid dates/windows, role, ownership, replacement, persistence and boundary cases.
+
+Backend commit f3688f133b08a5095a2dfb65b63db3405b72e186; mobile commit c2323335b965f996aa6216b5f55b0d6a6fef06a4. Final CI outcome must be checked independently. No physical Android test, APK, public HTTPS backend, or PostgreSQL migration. Next: product/vehicle handling compatibility and market/date grouping, then safe capacity allocation and OSRM route construction.

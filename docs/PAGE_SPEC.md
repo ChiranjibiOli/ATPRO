@@ -203,3 +203,27 @@ Audit: current main tree contains Farmer request create/list but NO GET/PATCH/ca
 
 ### 2026-11-11 implementation note
 The lifecycle pair specified above is restored in source: apps/mobile/src/screens/RequestDetailScreen.tsx, existing CreateRequestScreen with optional prefilled edit mode, dashboard detail navigation, and server GET/PATCH/cancel routes. Request revisions begin at 1; legacy records without revision read as 1. New integration tests live in apps/api/tests/request-lifecycle.test.js. CI status is tracked in PROGRESS.md. The request is not a booking, and cancellation does not release any assigned capacity because trip allocation has not been built.
+
+
+## 2026-11-12 — Driver availability and preliminary eligibility (implemented)
+
+### Driver availability management screen
+- Role/goal: authenticated Driver declares a future available window for an owned registered vehicle and its starting address; not live location.
+- Fields: vehicle selector (owned vehicle ID), date YYYY-MM-DD, Nepal-local startTime/endTime HH:mm, startAddress (5–200 characters).
+- Actions: open from Driver dashboard, select vehicle, save or replace a same-date declaration, see saved declarations, retry, return.
+- Validation: real calendar date, same-day start strictly before end, end in future within 365 days, nonempty address, server-derived driver ID; reject forged vehicle IDs.
+- Authorization/entities: Bearer session, Driver role, owned Vehicle, Availability record keyed by vehicleId/date. Other drivers receive 404; Farmer 403; anonymous 401.
+- API/backend: GET /api/driver/availability returns owner-scoped declarations; POST /api/driver/vehicles/:id/availability validates and transactionally replaces same vehicle/date record in JsonStore. Returns 200 {availability}.
+- UI states: initial loading, no registered vehicles, populated declarations, field errors, network failure/retry, saving, success, expired session.
+- Acceptance/tests: future same-day declaration saved, reload persists, same-date save replaces not duplicates, other Driver cannot access, invalid window rejected; mobile TypeScript and Android JS bundle.
+
+### Preliminary eligibility preview on Driver availability screen
+- Role/goal: authenticated Driver checks whether an owned vehicle has enough declared payload and a window covering a proposed pickup time; NOT a booking or farmer offer.
+- Fields: selected owned vehicle, pickup date YYYY-MM-DD, time HH:mm Nepal local, positive weightKg (at most 50,000).
+- Actions: Check eligibility, read pass/fail and precise reasons, change inputs, retry.
+- Validation: real date, time, positive finite weight; request time must be future. Window includes start and excludes end.
+- Authorization/entities: same Driver guard; reads owned Vehicle and matching Availability record; no mutation.
+- API/backend: GET /api/driver/vehicles/:id/eligibility?date=...&time=...&weightKg=... -> 200 {vehicleId,eligible,reasons,checks,note}. 400 invalid query, 401/403/404 auth/ownership.
+- UI states: loading while request, error, no vehicle, result with reasons, no declaration. No fake available offers.
+- Acceptance/tests: 500 kg vehicle accepts exactly 500 kg, rejects 501; 09:00 inclusive, 17:00 exclusive; missing declaration rejects; role/ownership enforced.
+- Deliberate limitation: no product compatibility, vehicle approval, volume, perishability, route feasibility, market/date grouping, or driver acceptance in this preliminary check. Do not treat eligible=true as dispatch authorization.

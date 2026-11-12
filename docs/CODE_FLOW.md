@@ -38,3 +38,12 @@ Authenticated Driver account routes to DriverDashboardScreen. The screen calls G
 
 ## 2026-11-11 restored request lifecycle
 Dashboard displays owner-scoped list; selecting a request sets the active ID and opens RequestDetailScreen. GET detail fetches authoritative request, revision and status. Edit opens CreateRequestScreen in prefilled mode with Nepal civil date/time derived from UTC pickupAt. PATCH includes expected revision and full validated form. Success returns to dashboard and reloads counts and list; 409 is shown as conflict. Cancel on detail first shows a destructive confirmation; POST cancellation with revision returns to refreshed dashboard, or reloads details on conflict. GET and all mutations require server-issued Farmer session and ownership. The mobile role preference is never used for authorization.
+
+
+## Driver availability and eligibility code flow (2026-11-12)
+1. Authenticated Driver dashboard opens DriverAvailabilityScreen from App.tsx.
+2. Screen calls GET /api/driver/overview and GET /api/driver/availability with bearer token; Driver guard and ownership restrict results.
+3. Driver selects owned vehicle, enters Nepal-local date, same-day time window and starting address. POST /api/driver/vehicles/:id/availability validates input, rechecks ownership and transactionally inserts or replaces one vehicle/date record.
+4. Screen reloads saved declarations. No GPS or trip is created.
+5. Driver enters proposed pickup date/time and kg. GET /api/driver/vehicles/:id/eligibility validates query and checks vehicle registered status, max payload, future pickup instant and matching availability window (inclusive start, exclusive end).
+6. Screen displays eligible/reasons and explicitly states checks NOT performed. Matching and allocation will later revalidate compatibility, market, perishability, vehicle approval, available volume and trip conflicts.
