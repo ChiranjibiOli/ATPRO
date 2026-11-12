@@ -3,7 +3,7 @@ import {ActivityIndicator,ScrollView,StyleSheet,Text,View} from 'react-native';
 import {ActionButton} from '../components/ActionButton';
 import {ApiError,driverOverview,type DriverOverview} from '../auth/client';
 import {COLORS} from '../theme/palette';
-export function DriverDashboardScreen({token,onRegister,onLogout,onExpired,busy,error:authError}:{token:string;onRegister:()=>void;onLogout:()=>void;onExpired:()=>void;busy:boolean;error:string|null}){
+export function DriverDashboardScreen({token,onRegister,onAvailability,onLogout,onExpired,busy,error:authError}:{token:string;onRegister:()=>void;onAvailability:()=>void;onLogout:()=>void;onExpired:()=>void;busy:boolean;error:string|null}){
  const [data,setData]=useState<DriverOverview|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState<string|null>(null);
  const load=useCallback(async()=>{setLoading(true);setError(null);try{setData(await driverOverview(token));}catch(e){if(e instanceof ApiError&&e.status===401){onExpired();return;}setError(e instanceof Error?e.message:'Network error');}finally{setLoading(false);}},[token]);
  useEffect(()=>{void load();},[load]);
@@ -15,6 +15,7 @@ export function DriverDashboardScreen({token,onRegister,onLogout,onExpired,busy,
    {data.vehicles.length===0?<Text style={s.text}>No vehicles registered yet.</Text>:data.vehicles.map(v=><View key={v.id} style={s.vehicle}><Text style={s.heading}>{v.registrationPlate}</Text><Text style={s.text}>{v.vehicleType.replace('_',' ')} • {v.bodyType} • {v.maximumWeightKg} kg</Text><Text style={s.text}>Status: {v.status}</Text></View>)}
   </View>:null}
   <ActionButton label="Register a vehicle" onPress={onRegister}/>
+  <ActionButton label="Manage availability and check eligibility" variant="secondary" onPress={onAvailability}/>
   {authError?<Text accessibilityRole="alert" style={s.error}>{authError}</Text>:null}
   <ActionButton label="Log out" variant="secondary" disabled={busy} onPress={onLogout}/>
  </ScrollView>;

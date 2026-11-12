@@ -62,3 +62,12 @@ export type Vehicle={id:string;driverId:string;registrationPlate:string;vehicleT
 export type DriverOverview={user:AuthUser;summary:{totalVehicles:number};vehicles:Vehicle[]};
 export const driverOverview=(token:string)=>apiRequest<DriverOverview>('/api/driver/overview','GET',undefined,token);
 export const registerVehicle=(token:string,body:{registrationPlate:string;vehicleType:Vehicle['vehicleType'];bodyType:Vehicle['bodyType'];maximumWeightKg:number;maximumVolumeM3?:number})=>apiRequest<{vehicle:Vehicle}>('/api/driver/vehicles','POST',body,token);
+
+export type DriverAvailability={vehicleId:string;driverId:string;date:string;startTime:string;endTime:string;startAddress:string;updatedAt:string};
+export type EligibilityResult={vehicleId:string;eligible:boolean;reasons:string[];checks:{weightWithinLimit:boolean;availabilityCoversTime:boolean};note:string};
+export const driverAvailability=(token:string)=>apiRequest<{availability:DriverAvailability[]}>('/api/driver/availability','GET',undefined,token);
+export const saveDriverAvailability=(token:string,vehicleId:string,body:{date:string;startTime:string;endTime:string;startAddress:string})=>
+ apiRequest<{availability:DriverAvailability}>('/api/driver/vehicles/'+encodeURIComponent(vehicleId)+'/availability','POST',body,token);
+export const previewDriverEligibility=(token:string,vehicleId:string,body:{date:string;time:string;weightKg:number})=>
+ apiRequest<EligibilityResult>('/api/driver/vehicles/'+encodeURIComponent(vehicleId)+'/eligibility?'+
+  'date='+encodeURIComponent(body.date)+'&time='+encodeURIComponent(body.time)+'&weightKg='+encodeURIComponent(String(body.weightKg)),'GET',undefined,token);
