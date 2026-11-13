@@ -71,3 +71,7 @@ Slice 15: DriverAvailabilityScreen supports owned vehicle selection, date/time w
 Slice 16: preliminary driver-only eligibility preview GET /api/driver/vehicles/:id/eligibility checks weight and declared time window; mobile screen displays actual result and reasons. It does not imply an offer, booking, approved vehicle or compatibility with any product. Added API integration and unit tests for invalid dates/windows, role, ownership, replacement, persistence and boundary cases.
 
 Backend commit f3688f133b08a5095a2dfb65b63db3405b72e186; mobile commit c2323335b965f996aa6216b5f55b0d6a6fef06a4. Final CI outcome must be checked independently. No physical Android test, APK, public HTTPS backend, or PostgreSQL migration. Next: product/vehicle handling compatibility and market/date grouping, then safe capacity allocation and OSRM route construction.
+
+## 2026-11-13 pre-implementation audit and plan
+
+Main bc5c0ae966cbab9c7e5815fa0ac4332004157386; previous CI green; zero open issues. Existing Farmer and Driver flows retained. Planned exactly two connected read-only slices: (17) product/vehicle compatibility preview; (18) same-market/Nepal-date candidate grouping. See DEVELOPMENT_PLAN and PAGE_SPEC for validation, authorization, API, UI states and acceptance criteria. Implementation/test/CI results to be appended after code.
