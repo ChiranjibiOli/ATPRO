@@ -137,7 +137,11 @@ export function createApp({ store, now = () => Date.now(), limiter = createLimit
         });
         return respond(res, 201, { request });
       }
-      const matchRoute = /^\\/api\\/farmer\\/requests\\/([0-9a-f-]{36})\\/matches$/.exec(path);
+      const matchParts = path.split('/');
+      const matchRoute = matchParts.length === 6 &&
+        matchParts[1] === 'api' && matchParts[2] === 'farmer' &&
+        matchParts[3] === 'requests' && matchParts[5] === 'matches' &&
+        /^[0-9a-f-]{36}$/.test(matchParts[4]) ? [null, matchParts[4]] : null;
       if (matchRoute && req.method === 'GET') {
         const token = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(req.headers.authorization ?? '')?.[1];
         if (!token) return respond(res, 401, { error: 'Authentication required.' });
