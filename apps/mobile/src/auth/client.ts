@@ -71,3 +71,12 @@ export const saveDriverAvailability=(token:string,vehicleId:string,body:{date:st
 export const previewDriverEligibility=(token:string,vehicleId:string,body:{date:string;time:string;weightKg:number})=>
  apiRequest<EligibilityResult>('/api/driver/vehicles/'+encodeURIComponent(vehicleId)+'/eligibility?'+
   'date='+encodeURIComponent(body.date)+'&time='+encodeURIComponent(body.time)+'&weightKg='+encodeURIComponent(String(body.weightKg)),'GET',undefined,token);
+
+export type RequestMatchPreview = {
+  requestId: string;
+  group: {marketName:string;pickupDate:string;pendingRequestCount:number;totalWeightKg:number};
+  candidates: Array<{vehicleId:string;vehicleType:Vehicle['vehicleType'];bodyType:Vehicle['bodyType'];maximumWeightKg:number;eligible:boolean;reasons:string[]}>;
+  note:string;
+};
+export const farmerRequestMatches=(token:string,id:string)=>
+ apiRequest<RequestMatchPreview>('/api/farmer/requests/'+encodeURIComponent(id)+'/matches','GET',undefined,token);

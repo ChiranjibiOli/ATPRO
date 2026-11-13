@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { validateVehicle, createVehicle } from './vehicles.js';
 import { validateAvailability, validateEligibilityQuery, previewVehicleEligibility } from './availability.js';
 import { validateTransportRequest, createRequest } from './requests.js';
+import { previewRequestMatches } from './matching.js';
 import { newToken, newUser, normalizeEmail, passwordHash, passwordMatches, publicUser, tokenDigest, validateRegistration } from './auth.js';
 
 const respond = (res, status, data) => {
@@ -135,6 +136,20 @@ export function createApp({ store, now = () => Date.now(), limiter = createLimit
           return { write: true };
         });
         return respond(res, 201, { request });
+      }
+      const matchRoute = /^\\/api\\/farmer\\/requests\\/([0-9a-f-]{36})\\/matches$/.exec(path);
+      if (matchRoute && req.method === 'GET') {
+        const token = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(req.headers.authorization ?? '')?.[1];
+        if (!token) return respond(res, 401, { error: 'Authentication required.' });
+        const db = await store.read();
+        const session = db.sessions.find(s => s.tokenHash === tokenDigest(token) && Date.parse(s.expiresAt) > now());
+        const user = session && db.users.find(u => u.id === session.userId);
+        if (!user) return respond(res, 401, { error: 'Session expired.' });
+        if (user.role !== 'farmer') return respond(res, 403, { error: 'Farmer access required.' });
+        const request = (db.requests ?? []).find(r => r.id === matchRoute[1] && r.farmerId === user.id);
+        if (!request) return respond(res, 404, { error: 'Request not found.' });
+        if (request.status !== 'pending') return respond(res, 409, { error: 'Only pending requests can be matched.' });
+        return respond(res, 200, previewRequestMatches(db, request, now()));
       }
       // Farmer-owned request lifecycle: do not reveal the existence of another farmer's ID.
       const parts = path.split('/');
