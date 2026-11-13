@@ -47,3 +47,6 @@ Dashboard displays owner-scoped list; selecting a request sets the active ID and
 4. Screen reloads saved declarations. No GPS or trip is created.
 5. Driver enters proposed pickup date/time and kg. GET /api/driver/vehicles/:id/eligibility validates query and checks vehicle registered status, max payload, future pickup instant and matching availability window (inclusive start, exclusive end).
 6. Screen displays eligible/reasons and explicitly states checks NOT performed. Matching and allocation will later revalidate compatibility, market, perishability, vehicle approval, available volume and trip conflicts.
+
+## 2026-11-13 Farmer matching preview flow
+RequestDetailScreen's 'Preview compatible vehicles and market group' action calls farmerRequestMatches(token,id), a GET /api/farmer/requests/:id/matches. Server checks bearer session, Farmer role, owner and pending state, then previewRequestMatches() derives Nepal-local date/time from saved pickupAt, compares declared Driver availability and vehicle weight/body compatibility, and aggregates same-market/date pending requests. Client renders eligible/ineligible vehicles and reasons plus aggregate group count and kg, or empty/error/retry. No mutations, trips or reservations occur.
