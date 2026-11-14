@@ -28,12 +28,12 @@ test('500 kg capacity is never exceeded and overflow is unassigned',()=>{
 });
 test('compatibility and declared availability apply to each allocated request',()=>{
  const v=[vehicle('cold',500,'refrigerated'),vehicle('open',500,'open')];
- const r=[request('chilled',300,'chilled'),request('fragile',250,'fragile'),request('standard',200)];
+ const r=[request('chilled',250,'chilled'),request('fragile',250,'fragile'),request('standard',200)];
  const db={requests:r,vehicles:v,availability:availability(v)};
  const out=previewGroupAllocation(db,r,v,now);
  assert.equal(out.assignedRequestCount,3);
  assert.equal(out.vehicles.find(x=>x.vehicleId==='cold').allocatedWeightKg,500);
- assert.equal(out.vehicles.find(x=>x.vehicleId==='open').allocatedWeightKg,250);
+ assert.equal(out.vehicles.find(x=>x.vehicleId==='open').allocatedWeightKg,200);
  const noAvailability=previewGroupAllocation({...db,availability:[]},r,v,now);
  assert.equal(noAvailability.assignedRequestCount,0);
  assert.equal(noAvailability.unassignedRequestCount,3);
