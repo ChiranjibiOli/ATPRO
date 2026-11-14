@@ -231,3 +231,24 @@ The lifecycle pair specified above is restored in source: apps/mobile/src/screen
 ## 2026-11-13: Farmer request matching preview (planned before code)
 
 Role/goal: authenticated Farmer inspects feasibility for an existing pending transport request. Read-only view embedded in request detail, no form fields or ability to book. Action: refresh preview. Inputs from server: saved request ID, product category, handling, kg, pickup instant, market; registered vehicles and Driver declarations. Authorization: valid session + Farmer role + request owner. API: GET /api/farmer/requests/:id/matches. Response: { requestId, group: { marketName, pickupDate, pendingRequestCount, totalWeightKg }, candidates: [{vehicleId, vehicleType, bodyType, maximumWeightKg, eligible, reasons}], note }. Do not expose other Farmer names, locations, request IDs, or Driver private details. Matching checks: product handling, vehicle type/body, weight and date/time availability; no approval, routing, volume, perishability or driver acceptance. Group by trimmed case-folded market name and Nepal date of pickup; cancelled requests excluded. States: loading, retryable network/server error, no candidate vehicles, candidates with reasons, group count 1. Acceptance/tests: 401/403/404, cross-farmer privacy, chilled/fragile/open/covered/refrigerated, weight, availability, same-market/day, different-market/day, cancelled exclusion; mobile TypeScript and Android JS bundle. JSON DB unchanged (derived read-only).
+
+
+## 2026-11-14 — Planned pair: read-only capacity allocation and Farmer allocation view (before implementation)
+
+### Slice 19A: Capacity-aware group allocation API
+- Role/goal: authenticated Farmer previews how compatible pending same-market/day requests *might* fit into available vehicles; no reservation or offer.
+- Inputs: existing request ID; server-owned request kg, handling, category, pickup time, market/date; existing vehicle max kg/body/status and availability. No new editable fields.
+- Actions/UI states: GET from existing request detail preview; no mutation. Empty group and no eligible vehicles produce explicit unassigned counts/reasons.
+- Authorization: bearer session, Farmer role, own pending request only; other Farmer IDs, names, addresses, driver contacts and pickup points are never returned.
+- Data/API: GET /api/farmer/requests/:id/matches adds allocation summary {assignedRequestCount, unassignedRequestCount, assignedWeightKg, unassignedWeightKg, vehicles:[{vehicleId, allocatedRequestCount, allocatedWeightKg, remainingWeightKg}], note}. Reads existing db.requests/vehicles/availability, writes nothing.
+- Algorithm: deterministic descending-weight first-fit across eligible registered vehicles; recheck each request's handling, date/time window and weight; no splitting loads; each request assigned at most once, each vehicle max kg never exceeded. Use stable ID tie-breaks and three-decimal kg arithmetic. One market/date only. A vehicle can be counted once per preview; no duplicate reservation.
+- Errors: 401 no/expired session, 403 wrong role, 404 nonowner, 409 nonpending, 500 storage error; missing vehicle yields unassigned.
+- Acceptance/tests: multiple Farmers same market/date with 500 kg capacity, overflow unassigned, mixed fragile/chilled compatibility, time-window rejection, market/day separation, deterministic output, no mutation and no identity leak. This remains *nonbinding*: no route/time/perishability feasibility, volume, vehicle approval, driver acceptance or booking.
+
+### Slice 19B: Farmer allocation preview UI
+- Role/goal: Farmer sees truthful allocated/unassigned group totals and per-vehicle kg remaining on RequestDetailScreen; cannot reserve or accept.
+- Fields/actions: existing Preview button loads the API, Retry after failure; no new input, no fake confirmation controls.
+- States: loading spinner, no vehicles, all unassigned, partial allocation, complete provisional allocation, API error with retry, session expiration; screen labels clearly say preliminary.
+- Entities/API: extends existing RequestMatchPreview type; no new DB schema, client GET only.
+- Validation/authorization: server owns all calculations and authorization; client only displays sanitized aggregate numbers.
+- Acceptance/tests: TypeScript passes, Android Expo JS bundle succeeds, API response shape tested; manual physical-device verification remains outstanding.
