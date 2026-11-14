@@ -231,3 +231,23 @@ The lifecycle pair specified above is restored in source: apps/mobile/src/screen
 ## 2026-11-13: Farmer request matching preview (planned before code)
 
 Role/goal: authenticated Farmer inspects feasibility for an existing pending transport request. Read-only view embedded in request detail, no form fields or ability to book. Action: refresh preview. Inputs from server: saved request ID, product category, handling, kg, pickup instant, market; registered vehicles and Driver declarations. Authorization: valid session + Farmer role + request owner. API: GET /api/farmer/requests/:id/matches. Response: { requestId, group: { marketName, pickupDate, pendingRequestCount, totalWeightKg }, candidates: [{vehicleId, vehicleType, bodyType, maximumWeightKg, eligible, reasons}], note }. Do not expose other Farmer names, locations, request IDs, or Driver private details. Matching checks: product handling, vehicle type/body, weight and date/time availability; no approval, routing, volume, perishability or driver acceptance. Group by trimmed case-folded market name and Nepal date of pickup; cancelled requests excluded. States: loading, retryable network/server error, no candidate vehicles, candidates with reasons, group count 1. Acceptance/tests: 401/403/404, cross-farmer privacy, chilled/fragile/open/covered/refrigerated, weight, availability, same-market/day, different-market/day, cancelled exclusion; mobile TypeScript and Android JS bundle. JSON DB unchanged (derived read-only).
+
+## 2026-11-14 — Capacity allocation plan and implementation
+
+### Slice A: read-only same-market/day capacity allocation
+- Role and goal: authenticated Farmer previews whether a group of compatible pending requests might fit available vehicle payload.
+- Fields: no new inputs; reads existing request's market, Nepal-local date, pickup time, category, handling and quantityKg, plus registered vehicles and declared availability.
+- Actions: GET /api/farmer/requests/:id/matches; does not create a trip or reserve capacity.
+- Auth/data: existing bearer Farmer session and ownership guard; JsonStore requests/vehicles/availability read only. Nonowner 404, Driver 403, missing/expired session 401, nonpending 409.
+- Output: allocation {assignedRequestCount,unassignedRequestCount,assignedWeightKg,unassignedWeightKg,vehicles:[{vehicleId,allocatedRequestCount,allocatedWeightKg,remainingWeightKg}],note}. No Farmer identity, pickup address, other request IDs, or Driver contact.
+- Rules: one normalized market and date, pending only, indivisible loads, deterministic descending weight and stable IDs, integer gram arithmetic, capacity, handling/body type and each request's pickup-time availability. No multi-trip capacity reservation.
+- States: zero vehicles, no feasible assignments, partial, complete provisional fit; backend error and retry through existing detail screen.
+- Acceptance: 500 kg vehicle fits 300+200 and leaves 100 unassigned; incompatible products/time windows excluded; stable order, no mutation, privacy; API tests and Android bundle.
+
+### Slice B: Farmer allocation results UI
+- Role and goal: Farmer views truthful group-level provisional kg allocation, unassigned load and per-vehicle remaining kg.
+- Page: existing RequestDetailScreen; Preview compatible vehicles and market group button; no new input fields.
+- Actions: load and retry existing GET, return to dashboard. No booking/acceptance button.
+- States: loading, API error/retry, empty eligible vehicles, assigned/unassigned results, expired session.
+- Authorization: all computations and ownership enforcement on server; client renders aggregates only.
+- Acceptance: TypeScript and Expo Android export pass; clearly labels preview nonbinding; physical phone testing not claimed.

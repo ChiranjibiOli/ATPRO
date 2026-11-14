@@ -50,3 +50,7 @@ Dashboard displays owner-scoped list; selecting a request sets the active ID and
 
 ## 2026-11-13 Farmer matching preview flow
 RequestDetailScreen's 'Preview compatible vehicles and market group' action calls farmerRequestMatches(token,id), a GET /api/farmer/requests/:id/matches. Server checks bearer session, Farmer role, owner and pending state, then previewRequestMatches() derives Nepal-local date/time from saved pickupAt, compares declared Driver availability and vehicle weight/body compatibility, and aggregates same-market/date pending requests. Client renders eligible/ineligible vehicles and reasons plus aggregate group count and kg, or empty/error/retry. No mutations, trips or reservations occur.
+
+## 2026-11-14 capacity allocation code flow
+
+Farmer opens pending request detail and presses Preview. RequestDetailScreen invokes farmerRequestMatches(token,id) from apps/mobile/src/auth/client.ts. API verifies bearer session, Farmer role, ownership and pending status; previewRequestMatches groups requests by normalized market and Nepal date. previewGroupAllocation reads that group and eligible vehicles, sorts by descending weight, checks each request's handling/body type, time-window availability and remaining integer-gram payload, and returns aggregate assigned/unassigned kg and per-vehicle remaining kg. API does not write to JsonStore. Mobile renders provisional totals, no booking action. Tests live in apps/api/tests/allocation.test.js. No OSRM, route ordering, perishability feasibility, confirmed driver offer or real capacity reservation.
