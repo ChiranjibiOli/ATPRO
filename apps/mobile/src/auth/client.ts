@@ -76,6 +76,7 @@ export type RequestMatchPreview = {
   requestId: string;
   group: {marketName:string;pickupDate:string;pendingRequestCount:number;totalWeightKg:number};
   candidates: Array<{vehicleId:string;vehicleType:Vehicle['vehicleType'];bodyType:Vehicle['bodyType'];maximumWeightKg:number;eligible:boolean;reasons:string[]}>;
+  allocation: {assignedRequestCount:number;unassignedRequestCount:number;assignedWeightKg:number;unassignedWeightKg:number;vehicles:Array<{vehicleId:string;allocatedRequestCount:number;allocatedWeightKg:number;remainingWeightKg:number}>;note:string};
   note:string;
 };
 export const farmerRequestMatches=(token:string,id:string)=>

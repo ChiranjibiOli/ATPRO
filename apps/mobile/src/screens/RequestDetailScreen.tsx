@@ -64,7 +64,16 @@ export function RequestDetailScreen({token,id,onBack,onEdit,onExpired}:Props){
     <Text style={s.heading}>Same-market and date pool</Text>
     <Text style={s.line}>{preview.group.marketName} • {preview.group.pickupDate}</Text>
     <Text style={s.line}>{preview.group.pendingRequestCount} pending requests • {preview.group.totalWeightKg} kg combined</Text>
-    <Text style={s.heading}>Preliminary vehicle compatibility</Text>
+    <Text style={s.heading}>Provisional weight allocation</Text>
+    <Text style={s.line}>Assigned: {preview.allocation.assignedRequestCount} requests • {preview.allocation.assignedWeightKg} kg</Text>
+    <Text style={s.line}>Unassigned: {preview.allocation.unassignedRequestCount} requests • {preview.allocation.unassignedWeightKg} kg</Text>
+    {preview.allocation.vehicles.length===0?<Text style={s.line}>No requests fit eligible vehicle capacity.</Text>:
+      preview.allocation.vehicles.map(v=><View key={v.vehicleId} style={s.matchRow}>
+        <Text style={s.line}>Vehicle {v.vehicleId.slice(0,8)} • {v.allocatedRequestCount} requests</Text>
+        <Text style={s.line}>{v.allocatedWeightKg} kg proposed • {v.remainingWeightKg} kg remaining</Text>
+      </View>)}
+    <Text style={s.line}>{preview.allocation.note}</Text>
+    <Text style={s.heading}>Individual vehicle compatibility</Text>
     {preview.candidates.length===0?<Text style={s.line}>No registered vehicles exist yet.</Text>:
      preview.candidates.map(v=><View key={v.vehicleId} style={s.matchRow}>
       <Text style={s.line}>{v.vehicleType.replace('_',' ')} • {v.bodyType} • {v.maximumWeightKg} kg</Text>
