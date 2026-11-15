@@ -83,3 +83,12 @@ Implemented slice 18: the same endpoint derives a market/date candidate pool fro
 ## 2026-11-14 — Preliminary capacity allocation + Farmer view
 
 Pre-run audit: main 18dc513fbda4c802694a8e65c1556fc0b48fa4fe, last CI green, no open issues. Inspected source, tests and docs; matching and market/date grouping already existed and were not recreated. Recorded two-slice plan before code. Implemented deterministic read-only weight allocation with per-request handling/availability checks and group totals, and displayed provisional allocation in RequestDetailScreen. Added allocation.test.js covering 500 kg overflow, mixed handling, unavailable times, grouping/privacy, determinism, fractional kg and nonmutation. No DB change, reservation, trip, route or driver acceptance. CI results should be checked against the latest commit; physical Android device/APK and public HTTPS preview are not verified. Next two features: geocoded/validated pickup/driver/market coordinates with privacy-aware storage, then OSRM distance/time matrix with unreachable/timeout handling and free usage safeguards. Do not infer road distance from plain-text addresses.
+
+
+## 2026-11-15 — routing foundation (two backend slices)
+- Audited main `6f0b0a9ce151c78a305079e6e9db57b5c11d5eec`, source tree, docs, eight API test files, latest green CI and zero open issues. No existing coordinate validation or OSRM module. Plan committed first as `docs/ROUTING_PLAN_2026-11-15.md`.
+- Slice 21: `geo.js` explicit numeric WGS84 validation and OSRM longitude/latitude formatting; no address geocoding or storage.
+- Slice 22: `osrm.js` internal road distance/time table adapter with bounded inputs, HTTPS endpoint checks, timeout, unreachable/null/malformed rejection and deterministic fake-fetch tests in `routing-foundation.test.js`.
+- No mobile screens, public route endpoint, DB schema changes, bookings or routing optimization. These are independently testable backend slices, not a complete end-to-end road preview.
+- CI results must be verified separately for the latest documentation commit. No physical-device or APK verification.
+- Next pair: authenticated Farmer/Driver coordinate persistence and native mobile coordinate forms, then OSRM-backed route preview with fixed Driver start and market end.
