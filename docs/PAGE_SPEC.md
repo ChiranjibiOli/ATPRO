@@ -251,3 +251,23 @@ Role/goal: authenticated Farmer inspects feasibility for an existing pending tra
 - States: loading, API error/retry, empty eligible vehicles, assigned/unassigned results, expired session.
 - Authorization: all computations and ownership enforcement on server; client renders aggregates only.
 - Acceptance: TypeScript and Expo Android export pass; clearly labels preview nonbinding; physical phone testing not claimed.
+
+
+## 2026-11-15 built backend slices: geographic validation and road matrix
+
+### Explicit coordinate validation (backend only)
+- User/goal: future Farmer pickup/market and Driver starting-location forms need exact coordinates, never inferred from address strings.
+- Inputs: `latitude` and `longitude` as finite numeric decimal degrees; ranges [-90,90] and [-180,180].
+- UI states/actions: no new mobile form in this slice; future UI will need empty, invalid, save/loading and ownership-protected edit states. No dead button introduced.
+- Authorization/storage: pure helper `validateCoordinates` and `osrmCoordinate`; no endpoint or persistence. Existing request/availability ownership rules unchanged.
+- Contract: returns `{valid,fields,point}`, or throws when attempting OSRM formatting of invalid data. Coordinates remain private until a dedicated authorized API is designed.
+- Acceptance/tests: boundary, missing, nonnumeric, nonfinite, invalid range, OSRM lon/lat order.
+
+### OSRM distance/time matrix adapter (backend only)
+- User/goal: future authorized route calculation, not yet an exposed Farmer or Driver page.
+- Inputs: ordered 2–25 validated points; configured trusted public HTTPS origin, injectable fetch and bounded timeout.
+- Actions: call OSRM table API with `annotations=distance,duration`, preserve directed/asymmetric matrices, fail closed on unreachable pairs.
+- API/data: internal `roadMatrix(points,options)` returns `distancesMeters`, `durationsSeconds`, `pointCount`; no public API, database writes or external coordinates sent by the app yet.
+- UI states: no new mobile UI; future route screen must show loading, no route, retry, error and estimates, never fake distances.
+- Acceptance/tests: reject bad point count/URL/timeout, non-OK responses, nulls, malformed dimensions; validate coordinate order and meters/seconds.
+- Limits: no live routing integration, route ordering, Clarke-Wright, 2-opt, booking or physical Android preview yet.
