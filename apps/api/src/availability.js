@@ -1,4 +1,5 @@
 import { nepalPickupAt } from './requests.js';
+import { optionalCoordinates } from './geo.js';
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -20,7 +21,9 @@ export function validateAvailability(data, now=Date.now()) {
     if (end && (Date.parse(end)<=now || Date.parse(end)>now+365*86400000))
       fields.date='Availability must end in the future and within 365 days.';
   }
-  return {fields,clean:{date:data?.date,startTime:data?.startTime,endTime:data?.endTime,startAddress:address}};
+  const start=optionalCoordinates(data?.startCoordinates,'startCoordinates');
+  Object.assign(fields,start.fields);
+  return {fields,clean:{date:data?.date,startTime:data?.startTime,endTime:data?.endTime,startAddress:address,startCoordinates:start.point}};
 }
 
 export function validateEligibilityQuery(params) {

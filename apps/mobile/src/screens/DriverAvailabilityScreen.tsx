@@ -8,6 +8,7 @@ type Props={token:string;onBack:()=>void;onExpired:()=>void};
 export function DriverAvailabilityScreen({token,onBack,onExpired}:Props){
  const [vehicles,setVehicles]=useState<Vehicle[]>([]),[entries,setEntries]=useState<DriverAvailability[]>([]);
  const [vehicleId,setVehicleId]=useState(''),[date,setDate]=useState(''),[startTime,setStartTime]=useState('09:00'),[endTime,setEndTime]=useState('17:00'),[address,setAddress]=useState('');
+ const [startLat,setStartLat]=useState(''),[startLon,setStartLon]=useState('');
  const [checkDate,setCheckDate]=useState(''),[checkTime,setCheckTime]=useState('10:00'),[weight,setWeight]=useState('');
  const [result,setResult]=useState<EligibilityResult|null>(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState<string|null>(null),[notice,setNotice]=useState<string|null>(null),[fields,setFields]=useState<Record<string,string>>({});
  const handleError=(e:unknown)=>{if(e instanceof ApiError&&e.status===401){onExpired();return;}setFields(e instanceof ApiError?(e.fields??{}):{});setError(e instanceof Error?e.message:'Cannot reach the API.');};
@@ -22,7 +23,11 @@ export function DriverAvailabilityScreen({token,onBack,onExpired}:Props){
  const chosen=vehicles.find(v=>v.id===vehicleId);
  const save=async()=>{
   if(!chosen||busy)return;setBusy(true);setError(null);setNotice(null);setFields({});setResult(null);
-  try{await saveDriverAvailability(token,chosen.id,{date,startTime,endTime,startAddress:address});
+  const hasAny=!!startLat.trim()||!!startLon.trim(),latitude=Number(startLat),longitude=Number(startLon);
+  if(hasAny&&(!startLat.trim()||!startLon.trim()||!Number.isFinite(latitude)||!Number.isFinite(longitude)||latitude < -90||latitude > 90||longitude < -180||longitude > 180)){
+   setFields({startCoordinates:'Enter both valid decimal coordinates (latitude -90 to 90, longitude -180 to 180).'});setBusy(false);return;
+  }
+  try{await saveDriverAvailability(token,chosen.id,{date,startTime,endTime,startAddress:address,startCoordinates:hasAny?{latitude,longitude}:null});
    setNotice('Availability saved for '+date+'.');setCheckDate(date);
    const list=await driverAvailability(token);setEntries(list.availability);
   }catch(e){handleError(e);}finally{setBusy(false);}
@@ -55,9 +60,12 @@ export function DriverAvailabilityScreen({token,onBack,onExpired}:Props){
     {input('Start time',startTime,setStartTime,'startTime','09:00')}
     {input('End time',endTime,setEndTime,'endTime','17:00')}
     {input('Starting address',address,setAddress,'startAddress','City and pickup starting point')}
+    <Text style={s.hint}>Optional starting coordinates. Enter both decimal degrees or leave blank. Not live GPS.</Text>
+    {input('Start latitude',startLat,setStartLat,'startCoordinates','e.g. 27.70',true)}
+    {input('Start longitude',startLon,setStartLon,'startCoordinates','e.g. 85.32',true)}
     <Text style={s.hint}>Saving again for the same vehicle and date replaces its earlier declaration.</Text>
     <ActionButton label="Save availability" disabled={busy} onPress={()=>void save()}/>
-    {entries.filter(a=>a.vehicleId===vehicleId).map(a=><Text key={a.date} style={s.entry}>{a.date}: {a.startTime}–{a.endTime} • {a.startAddress}</Text>)}
+    {entries.filter(a=>a.vehicleId===vehicleId).map(a=><Text key={a.date} style={s.entry}>{a.date}: {a.startTime}–{a.endTime} • {a.startAddress}{a.startCoordinates ? ` • ${a.startCoordinates.latitude}, ${a.startCoordinates.longitude}` : ''}</Text>)}
    </View>
    <View style={s.card}><Text style={s.heading}>2. Preliminary eligibility check</Text>
     <Text style={s.hint}>Check declared time and weight only. Product compatibility, volume, travel time, vehicle approval and driver acceptance are not yet evaluated.</Text>

@@ -32,12 +32,15 @@ export type FarmerOverview = {
 export const farmerOverview = (token: string) =>
   apiRequest<FarmerOverview>('/api/farmer/overview', 'GET', undefined, token);
 
+export type Coordinates = {latitude:number;longitude:number};
 export type RequestInput = {
   productName:string;
   category:'vegetable'|'fruit'|'grain'|'other';
   handling:'standard'|'fragile'|'chilled';
   quantityKg:number;
   pickupAddress:string;
+  pickupCoordinates?:Coordinates|null;
+  marketCoordinates?:Coordinates|null;
   marketName:string;
   pickupDate:string;
   pickupTime:string;
@@ -63,10 +66,10 @@ export type DriverOverview={user:AuthUser;summary:{totalVehicles:number};vehicle
 export const driverOverview=(token:string)=>apiRequest<DriverOverview>('/api/driver/overview','GET',undefined,token);
 export const registerVehicle=(token:string,body:{registrationPlate:string;vehicleType:Vehicle['vehicleType'];bodyType:Vehicle['bodyType'];maximumWeightKg:number;maximumVolumeM3?:number})=>apiRequest<{vehicle:Vehicle}>('/api/driver/vehicles','POST',body,token);
 
-export type DriverAvailability={vehicleId:string;driverId:string;date:string;startTime:string;endTime:string;startAddress:string;updatedAt:string};
+export type DriverAvailability={vehicleId:string;driverId:string;date:string;startTime:string;endTime:string;startAddress:string;startCoordinates?:Coordinates|null;updatedAt:string};
 export type EligibilityResult={vehicleId:string;eligible:boolean;reasons:string[];checks:{weightWithinLimit:boolean;availabilityCoversTime:boolean};note:string};
 export const driverAvailability=(token:string)=>apiRequest<{availability:DriverAvailability[]}>('/api/driver/availability','GET',undefined,token);
-export const saveDriverAvailability=(token:string,vehicleId:string,body:{date:string;startTime:string;endTime:string;startAddress:string})=>
+export const saveDriverAvailability=(token:string,vehicleId:string,body:{date:string;startTime:string;endTime:string;startAddress:string;startCoordinates?:Coordinates|null})=>
  apiRequest<{availability:DriverAvailability}>('/api/driver/vehicles/'+encodeURIComponent(vehicleId)+'/availability','POST',body,token);
 export const previewDriverEligibility=(token:string,vehicleId:string,body:{date:string;time:string;weightKg:number})=>
  apiRequest<EligibilityResult>('/api/driver/vehicles/'+encodeURIComponent(vehicleId)+'/eligibility?'+

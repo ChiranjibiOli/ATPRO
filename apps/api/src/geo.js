@@ -16,3 +16,9 @@ export function osrmCoordinate(value) {
   if (!checked.valid) throw new TypeError('Invalid geographic coordinates.');
   return `${checked.point.longitude},${checked.point.latitude}`;
 }
+
+export function optionalCoordinates(value, fieldName) {
+ if(value==null)return {fields:{},point:null};
+ const result=validateCoordinates(value);
+ return result.valid?{fields:{},point:result.point}:{fields:{[fieldName]:'Enter both valid numeric latitude (-90 to 90) and longitude (-180 to 180).'},point:null};
+}

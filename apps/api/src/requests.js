@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { optionalCoordinates } from './geo.js';
 
 const categories = new Set(['vegetable', 'fruit', 'grain', 'other']);
 const handlingTypes = new Set(['standard', 'fragile', 'chilled']);
@@ -31,6 +32,9 @@ export function validateTransportRequest(data, now = Date.now()) {
   if (!pickupAt) fields.pickupDate = 'Enter a real date (YYYY-MM-DD) and time (HH:mm) in Nepal time.';
   else if (Date.parse(pickupAt) <= now + 10 * 60_000 || Date.parse(pickupAt) > now + 365 * 24 * 60 * 60_000)
     fields.pickupDate = 'Pickup must be more than 10 minutes ahead and within 365 days.';
+  const pickup=optionalCoordinates(data?.pickupCoordinates,'pickupCoordinates');
+  const market=optionalCoordinates(data?.marketCoordinates,'marketCoordinates');
+  Object.assign(fields,pickup.fields,market.fields);
   return {
     fields,
     clean: {
@@ -38,6 +42,8 @@ export function validateTransportRequest(data, now = Date.now()) {
       category: data?.category,
       handling: data?.handling,
       quantityKg: data?.quantityKg,
+      pickupCoordinates:pickup.point,
+      marketCoordinates:market.point,
       pickupAddress: typeof data?.pickupAddress === 'string' ? data.pickupAddress.trim() : '',
       marketName: typeof data?.marketName === 'string' ? data.marketName.trim() : '',
       pickupAt,
