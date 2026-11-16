@@ -92,3 +92,6 @@ Pre-run audit: main 18dc513fbda4c802694a8e65c1556fc0b48fa4fe, last CI green, no 
 - No mobile screens, public route endpoint, DB schema changes, bookings or routing optimization. These are independently testable backend slices, not a complete end-to-end road preview.
 - CI results must be verified separately for the latest documentation commit. No physical-device or APK verification.
 - Next pair: authenticated Farmer/Driver coordinate persistence and native mobile coordinate forms, then OSRM-backed route preview with fixed Driver start and market end.
+
+## 2026-11-16 pre-implementation audit and plan
+Main 28851e7bf0077f0378536d5b05602d300a02a185; latest CI green; zero open issues. Existing geo and OSRM helpers are not connected to persisted location records. Plan/specs recorded before implementation: (23) Farmer pickup+market coordinate capture, (24) Driver start coordinate capture; both optional paired values, owner-scoped, with mobile form and API tests. No route preview yet.
