@@ -3,6 +3,8 @@ import { validateVehicle, createVehicle } from './vehicles.js';
 import { validateAvailability, validateEligibilityQuery, previewVehicleEligibility } from './availability.js';
 import { validateTransportRequest, createRequest } from './requests.js';
 import { previewRequestMatches } from './matching.js';
+import { routeReadiness, summarizeRoadMatrix } from './route-preview.js';
+import { roadMatrix, RoutingUnavailableError } from './osrm.js';
 import { newToken, newUser, normalizeEmail, passwordHash, passwordMatches, publicUser, tokenDigest, validateRegistration } from './auth.js';
 
 const respond = (res, status, data) => {
@@ -34,7 +36,7 @@ function createLimiter({ limit = 12, windowMs = 60_000 } = {}) {
   };
 }
 const badCredentials = { error: 'Invalid email or password.' };
-export function createApp({ store, now = () => Date.now(), limiter = createLimiter() }) {
+export function createApp({ store, now = () => Date.now(), limiter = createLimiter(), matrixProvider = roadMatrix }) {
   return createServer(async (req, res) => {
     try {
       const path = new URL(req.url ?? '/', 'http://localhost').pathname;
@@ -154,6 +156,39 @@ export function createApp({ store, now = () => Date.now(), limiter = createLimit
         if (!request) return respond(res, 404, { error: 'Request not found.' });
         if (request.status !== 'pending') return respond(res, 409, { error: 'Only pending requests can be matched.' });
         return respond(res, 200, previewRequestMatches(db, request, now()));
+      }
+      // Fixed-endpoint road preview: authenticated Farmer's own pending request only.
+      const routeParts = path.split('/');
+      const routeId = routeParts.length === 6 && routeParts[1] === 'api' &&
+        routeParts[2] === 'farmer' && routeParts[3] === 'requests' &&
+        routeParts[5] === 'route-preview' && /^[0-9a-f-]{36}$/.test(routeParts[4])
+        ? routeParts[4] : null;
+      if (routeId && req.method === 'GET') {
+        const token = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(req.headers.authorization ?? '')?.[1];
+        if (!token) return respond(res, 401, { error: 'Authentication required.' });
+        const db = await store.read();
+        const session = db.sessions.find(s => s.tokenHash === tokenDigest(token) && Date.parse(s.expiresAt) > now());
+        const user = session && db.users.find(u => u.id === session.userId);
+        if (!user) return respond(res, 401, { error: 'Session expired.' });
+        if (user.role !== 'farmer') return respond(res, 403, { error: 'Farmer access required.' });
+        const request = (db.requests ?? []).find(r => r.id === routeId && r.farmerId === user.id);
+        if (!request) return respond(res, 404, { error: 'Request not found.' });
+        if (request.status !== 'pending') return respond(res, 409, { error: 'Only pending requests can be previewed.' });
+        const query = new URL(req.url, 'http://localhost').searchParams;
+        const vehicleId = query.get('vehicleId');
+        if ([...query.keys()].some(key => key !== 'vehicleId') ||
+            (vehicleId !== null && !/^[0-9a-f-]{36}$/.test(vehicleId)))
+          return respond(res, 400, { error: 'Invalid route preview query.' });
+        const readiness = routeReadiness(db, request, { vehicleId, now: now() });
+        if (!readiness.ready) return respond(res, 200, { ready: false, reasons: readiness.reasons, vehicleId: readiness.vehicleId });
+        if (!limiter('road-preview:' + user.id)) return respond(res, 429, { error: 'Too many road previews. Try again later.' });
+        try {
+          const matrix = await matrixProvider(readiness.points);
+          return respond(res, 200, { ready: true, ...summarizeRoadMatrix(matrix, readiness.vehicleId, readiness.vehicleType) });
+        } catch (error) {
+          if (!(error instanceof RoutingUnavailableError) && !(error instanceof TypeError)) console.error('Road preview failed:', error);
+          return respond(res, 503, { error: 'Road routing is currently unavailable. Try again later.' });
+        }
       }
       // Farmer-owned request lifecycle: do not reveal the existence of another farmer's ID.
       const parts = path.split('/');
