@@ -278,3 +278,15 @@ Role/goal: authenticated Farmer inspects feasibility for an existing pending tra
 
 ### 2026-11-16 implementation verification scope
 Existing native Farmer create/edit request form now accepts optional pickup/market latitude+longitude pairs and sends them to existing POST/PATCH endpoints. Existing native Driver availability form accepts optional start latitude+longitude pair and saves via existing POST availability endpoint. Paired-field validation runs locally and on server; blank pair becomes null. Existing loading/saving/error/retry and role/ownership checks remain. API tests in apps/api/tests/coordinates.test.js exercise validation, persisted round-trip, Farmer cross-owner 404, Driver/Farmer 403 and stale revision 409. No OSRM preview yet; Expo Android physical-device check still needed.
+
+
+## Built 2026-11-17: Farmer route readiness and OSRM road preview (API-only slices)
+- User/goal: authenticated Farmer assesses road-preview readiness for their own pending transport request, then obtains a fixed Driver-start → own pickup → one destination-market road estimate.
+- UI: no new mobile screen in these two backend slices; the existing Farmer request detail and coordinate form remain unchanged. API response states ready=false with reasons, ready=true with two directed legs, 400 query validation, 401 unauthenticated, 403 wrong role, 404 not owned, 409 nonpending, 429 preview rate limit, 503 routing unavailable.
+- Input: existing saved pickupCoordinates, marketCoordinates, Driver availability startCoordinates, vehicle compatibility and availability; optional vehicleId UUID query. No arbitrary URL, address geocoding, or client-supplied location.
+- Authorization: session-backed Farmer role, owner-scoped request; no other Farmer addresses, coordinates or request IDs returned. Vehicle candidate must pass existing compatibility and availability checks.
+- API: GET /api/farmer/requests/:id/route-preview; if ready=false, returns reason codes; if ready=true, invokes trusted backend OSRM matrix with three points and returns selected vehicle ID/type, directed leg distances/durations and totals. No database mutation.
+- Data: requests, vehicles, availability and sessions in local JSON store; no new persistent fields.
+- Validation: valid stored coordinates; selected vehicle eligible; no fabricated fallback for missing/unreachable roads; 12 road previews/minute per authenticated Farmer (in-process).
+- Acceptance: only own pending requests, exactly one destination market, Driver start fixed first and market fixed last, no booking or multi-pickup claims, failure sanitized.
+- Tests: route-preview.test.js exercises missing/invalid coordinates, role/owner/status, query rejection, deterministic eligibility, directed asymmetric matrix, privacy, no mutation and upstream 503. Physical-device UI is not verified.
