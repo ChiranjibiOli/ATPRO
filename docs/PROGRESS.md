@@ -98,3 +98,12 @@ Main 28851e7bf0077f0378536d5b05602d300a02a185; latest CI green; zero open issues
 
 ### 2026-11-16 implementation
 Two coordinate-capture vertical slices committed in 79b1bffc94efc88a68d987e491bb22469efb2759: Farmer request pickup and market points, and Driver availability starting point. Existing Expo native CreateRequestScreen and DriverAvailabilityScreen have optional paired decimal-degree inputs. Shared geo validation rejects malformed/out-of-range/partial points; JSON store persists null for address-only records and valid coordinate objects for opted-in records. Existing Farmer owner, role, pending status and revision checks and Driver ownership checks apply. Added coordinates.test.js for unit and API persistence, role/ownership and revision behavior. CI run 43883350968 started; outcome must be checked independently. No real geocoding, OSRM network integration, live GPS, route optimization, APK or public preview. Next: safe owner-scoped route-ready coordinate completeness API; OSRM matrix preview with strict request limits and fixed start/end, no booking.
+
+
+## 2026-11-17 — Farmer route readiness and directed OSRM preview
+Pre-run audit: main 4cfe7d965381a12314ce7cd18b0c1af39c1b2c8d, latest CI 43883460336 successful, zero open issues. Inspected source tree, OSRM helper, geo validation, Farmer request/matching routes, availability and tests. Plan committed before code in DEVELOPMENT_PLAN.md (07188751ea8ff3f54d8921319668b98685a9f342).
+- Slice 25: routeReadiness() checks own pending request coordinates, market coordinates, eligible available vehicle and its Driver start coordinates. Missing requirements are reported with machine-readable reasons; no synthetic locations or other Farmers' details.
+- Slice 26: GET /api/farmer/requests/:id/route-preview calls existing OSRM matrix helper for [Driver start, own pickup, one market], returns only directed legs and totals. Session/role/ownership checks, optional vehicle ID validation, per-Farmer in-process rate limit and sanitized routing failure response.
+- Files: apps/api/src/route-preview.js, apps/api/src/app.js, apps/api/tests/route-preview.test.js. No mobile screen or database migration in this backend-only pair; no claim of live OSRM success or physical Android verification.
+- Next two: Expo Farmer route preview UI (loading, missing data, errors, distance and duration) and multi-pickup fixed-endpoint Clarke-Wright route construction with constraint tests.
+- CI outcome to be verified against the final commit separately.
