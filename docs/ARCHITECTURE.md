@@ -113,3 +113,11 @@ Optional WGS84 decimal-degree coordinate objects are captured on Farmer requests
 
 ### 2026-11-16 implementation update
 The API now persists optional Farmer request pickupCoordinates/marketCoordinates and Driver availability startCoordinates as WGS84 decimal degrees using shared geo.js validation. The Expo forms capture both fields per point, show local and server errors, and preserve legacy address-only records as null coordinates. No geocoding, GPS permission, automatic mapping or road route is inferred. A future OSRM preview must only use validated stored points, keep driver start and one market endpoint, and must not reveal other Farmers' private coordinates. The existing JSON store remains development-only; production database migration is outstanding.
+
+
+## 2026-11-17: integrated road preview backend
+- apps/api/src/route-preview.js builds a deterministic single-request readiness decision from persisted request coordinates, existing matching eligibility, and Driver availability start coordinates.
+- GET /api/farmer/requests/:id/route-preview authenticates Farmer and request ownership before any routing. It accepts only an optional vehicleId, never an OSRM URL or raw coordinates.
+- When ready, apps/api/src/osrm.js obtains a 3x3 directed road matrix for [Driver start, own Farmer pickup, one market]. The API returns only legs 0→1 and 1→2 and their totals; it never returns the full matrix or other Farmers' private locations.
+- Missing coordinates/vehicle eligibility return ready=false and reasons without upstream requests. OSRM failures return sanitized 503. In-process per-Farmer preview limiter protects the public demo from simple repeated calls; this is not a distributed rate limiter.
+- This is an estimate for one Farmer request, NOT a multi-Farmer optimized trip, perishability validation, capacity reservation, acceptance or booking. The Expo UI has not yet been wired to the preview endpoint.
