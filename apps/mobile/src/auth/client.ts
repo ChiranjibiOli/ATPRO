@@ -84,3 +84,11 @@ export type RequestMatchPreview = {
 };
 export const farmerRequestMatches=(token:string,id:string)=>
  apiRequest<RequestMatchPreview>('/api/farmer/requests/'+encodeURIComponent(id)+'/matches','GET',undefined,token);
+
+/** Single-Farmer fixed-endpoint road preview, never a booking or optimized multi-stop trip. */
+export type FarmerRoadPreview =
+ | {ready:false;reasons:string[];vehicleId:string|null}
+ | {ready:true;vehicleId:string;vehicleType:Vehicle['vehicleType'];legs:Array<{from:string;to:string;distanceMeters:number;durationSeconds:number}>;totalDistanceMeters:number;totalDurationSeconds:number;note:string};
+export const farmerRoadPreview=(token:string,id:string,vehicleId?:string)=>
+ apiRequest<FarmerRoadPreview>('/api/farmer/requests/'+encodeURIComponent(id)+'/route-preview'+
+  (vehicleId?'?vehicleId='+encodeURIComponent(vehicleId):''),'GET',undefined,token);
