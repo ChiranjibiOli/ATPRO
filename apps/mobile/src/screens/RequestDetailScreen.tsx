@@ -1,7 +1,7 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
 import {ActivityIndicator,Alert,ScrollView,StyleSheet,Text,View} from 'react-native';
 import {ActionButton} from '../components/ActionButton';
-import {ApiError,farmerRequestDetail,cancelFarmerRequest,farmerRequestMatches,type RequestMatchPreview,type TransportRequest} from '../auth/client';
+import {ApiError,farmerRequestDetail,cancelFarmerRequest,farmerRequestMatches,farmerRoadPreview,type FarmerRoadPreview,type RequestMatchPreview,type TransportRequest} from '../auth/client';
 import {COLORS} from '../theme/palette';
 
 type Props={token:string;id:string;onBack:()=>void;onEdit:(request:TransportRequest)=>void;onExpired:()=>void};
@@ -9,6 +9,9 @@ export function RequestDetailScreen({token,id,onBack,onEdit,onExpired}:Props){
  const [request,setRequest]=useState<TransportRequest|null>(null);
  const [preview,setPreview]=useState<RequestMatchPreview|null>(null);
  const [previewLoading,setPreviewLoading]=useState(false);
+ const [road,setRoad]=useState<FarmerRoadPreview|null>(null);
+ const [roadLoading,setRoadLoading]=useState(false);
+ const [roadError,setRoadError]=useState<string|null>(null);
  const [previewError,setPreviewError]=useState<string|null>(null);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
  const [error,setError]=useState<string|null>(null);
@@ -28,6 +31,23 @@ export function RequestDetailScreen({token,id,onBack,onEdit,onExpired}:Props){
    setPreviewError(e instanceof Error?e.message:'Could not load preview.');}
   finally{setPreviewLoading(false);}
  };
+ const checkRoad=async()=>{
+  if(!request||request.status!=='pending'||roadLoading)return;
+  setRoadLoading(true);setRoadError(null);setRoad(null);
+  try{setRoad(await farmerRoadPreview(token,request.id));}
+  catch(e){if(e instanceof ApiError&&e.status===401){expired.current();return;}
+   setRoadError(e instanceof Error?e.message:'Could not calculate road route.');}
+  finally{setRoadLoading(false);}
+ };
+ const reasonLabel=(reason:string):string=>({
+  missing_pickup_coordinates:'Add pickup latitude and longitude by editing this request.',
+  missing_market_coordinates:'Add destination market latitude and longitude by editing this request.',
+  missing_driver_start_coordinates:'The selected Driver has not declared starting coordinates for this date.',
+  no_eligible_vehicle:'No registered vehicle currently passes the weight, handling and availability checks.',
+  vehicle_not_eligible:'The selected vehicle is not eligible for this request.',
+ } as Record<string,string>)[reason]??'Route not ready: '+reason.replace(/_/g,' ');
+ const km=(meters:number)=> (meters/1000).toFixed(2)+' km';
+ const minutes=(seconds:number)=> (seconds/60).toFixed(1)+' min';
  const cancel=()=>{
   if(!request||request.status!=='pending'||busy)return;
   Alert.alert('Cancel transport request?','This request will be marked cancelled. It cannot be edited or booked later.',[
@@ -53,10 +73,29 @@ export function RequestDetailScreen({token,id,onBack,onEdit,onExpired}:Props){
    <Text style={s.line}>Maximum transit: {request.maxTransitHours} hours</Text>
    <Text style={s.line}>Revision: {request.revision}</Text>
    {request.status==='pending'?<>
+    <ActionButton label="Preview road route" disabled={busy||roadLoading} variant="secondary" onPress={()=>void checkRoad()}/>
     <ActionButton label="Preview compatible vehicles and market group" disabled={busy||previewLoading} variant="secondary" onPress={()=>void checkMatches()}/>
     <ActionButton label="Edit pending request" disabled={busy} onPress={()=>onEdit(request)}/>
     <ActionButton label="Cancel pending request" disabled={busy} variant="secondary" onPress={cancel}/>
    </>:<Text style={s.line}>Cancelled requests are read-only.</Text>}
+  </View>:null}
+  {roadLoading?<View style={s.card}><ActivityIndicator color={COLORS.forest}/><Text style={s.line}>Calculating road distance and travel time...</Text></View>:null}
+  {roadError?<View accessibilityRole="alert" style={s.card}><Text style={s.error}>{roadError}</Text><ActionButton label="Retry road preview" disabled={roadLoading} onPress={()=>void checkRoad()}/></View>:null}
+  {road?<View style={s.card}>
+    <Text style={s.heading}>Single-pickup road preview</Text>
+    {!road.ready?<View accessibilityRole="alert">
+      <Text style={s.line}>Route is not ready.</Text>
+      {road.reasons.map(reason=><Text key={reason} style={s.line}>• {reasonLabel(reason)}</Text>)}
+    </View>:<>
+      <Text style={s.line}>Vehicle: {road.vehicleType.replace('_',' ')} ({road.vehicleId.slice(0,8)})</Text>
+      {road.legs.map((leg,index)=><View key={index} style={s.matchRow}>
+        <Text style={s.line}>{index===0?'Driver start → Your pickup':'Your pickup → Destination market'}</Text>
+        <Text style={s.line}>{km(leg.distanceMeters)} • {minutes(leg.durationSeconds)}</Text>
+      </View>)}
+      <Text style={s.heading}>Total: {km(road.totalDistanceMeters)} • {minutes(road.totalDurationSeconds)}</Text>
+      <Text style={s.line}>{road.note}</Text>
+    </>}
+    <Text style={s.line}>Road estimates are provisional. No other Farmer pickups, optimization, reservation or Driver acceptance are included.</Text>
   </View>:null}
   {previewLoading?<ActivityIndicator color={COLORS.forest}/>:null}
   {previewError?<View accessibilityRole="alert" style={s.card}><Text style={s.error}>{previewError}</Text><ActionButton label="Retry matching preview" onPress={()=>void checkMatches()}/></View>:null}
