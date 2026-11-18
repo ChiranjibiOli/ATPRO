@@ -107,3 +107,9 @@ Pre-run audit: main 4cfe7d965381a12314ce7cd18b0c1af39c1b2c8d, latest CI 43883460
 - Files: apps/api/src/route-preview.js, apps/api/src/app.js, apps/api/tests/route-preview.test.js. No mobile screen or database migration in this backend-only pair; no claim of live OSRM success or physical Android verification.
 - Next two: Expo Farmer route preview UI (loading, missing data, errors, distance and duration) and multi-pickup fixed-endpoint Clarke-Wright route construction with constraint tests.
 - CI outcome to be verified against the final commit separately.
+
+
+## 2026-11-18 — Native Farmer road preview
+Audited main b7cfbd332b057ee7c52ad5f4ddabfef69b9d685c, latest CI passed and zero open issues. Existing protected route preview API and OSRM helper were already present; skipped rewriting them. Recorded the two-slice plan in DEVELOPMENT_PLAN before implementation.
+Slice 27: typed FarmerRoadPreview client and authenticated GET call using stored bearer session, no arbitrary coordinate input.
+Slice 28: RequestDetailScreen road preview action with loading, not-ready reasons, road legs, totals, errors and retry. Existing matching, edit and cancel flows preserved. No DB or API changes. The feature is a single-request estimate, not a multi-Farmer optimized route, capacity reservation or booking. Verify final CI separately; physical Android, live public OSRM and APK are not verified. Next: multi-Farmer fixed-endpoint Clarke-Wright adaptation and constraint-aware 2-opt.
