@@ -121,3 +121,7 @@ The API now persists optional Farmer request pickupCoordinates/marketCoordinates
 - When ready, apps/api/src/osrm.js obtains a 3x3 directed road matrix for [Driver start, own Farmer pickup, one market]. The API returns only legs 0→1 and 1→2 and their totals; it never returns the full matrix or other Farmers' private locations.
 - Missing coordinates/vehicle eligibility return ready=false and reasons without upstream requests. OSRM failures return sanitized 503. In-process per-Farmer preview limiter protects the public demo from simple repeated calls; this is not a distributed rate limiter.
 - This is an estimate for one Farmer request, NOT a multi-Farmer optimized trip, perishability validation, capacity reservation, acceptance or booking. The Expo UI has not yet been wired to the preview endpoint.
+
+
+## 2026-11-18 native road preview integration
+The Expo Farmer request details screen now invokes the previously implemented protected route-preview endpoint through a typed mobile API client. It renders either readiness reasons or directed Driver-start→own-pickup and own-pickup→market road legs, plus totals. All distances originate from the backend OSRM matrix; no mobile straight-line fallback, no location disclosure for other Farmers and no booking mutation. Existing 401 session handling and retry UI apply. This remains one-request road estimation, not Clarke-Wright, 2-opt, volume/perishability feasibility or a confirmed multi-Farmer route.
