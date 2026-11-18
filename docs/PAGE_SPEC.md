@@ -290,3 +290,13 @@ Existing native Farmer create/edit request form now accepts optional pickup/mark
 - Validation: valid stored coordinates; selected vehicle eligible; no fabricated fallback for missing/unreachable roads; 12 road previews/minute per authenticated Farmer (in-process).
 - Acceptance: only own pending requests, exactly one destination market, Driver start fixed first and market fixed last, no booking or multi-pickup claims, failure sanitized.
 - Tests: route-preview.test.js exercises missing/invalid coordinates, role/owner/status, query rejection, deterministic eligibility, directed asymmetric matrix, privacy, no mutation and upstream 503. Physical-device UI is not verified.
+
+
+## Built 2026-11-18: Farmer single-request road preview
+- Role/goal: authenticated Farmer previews road readiness and estimated driving time for their own pending request.
+- Page: RequestDetailScreen; no new editable fields; button 'Preview road route' calls the typed client.
+- Inputs: existing request ID, persisted own pickup and market coordinates, selected eligible Driver vehicle's declared starting coordinates; no arbitrary client-supplied coordinates.
+- UI states: idle; loading with disabled duplicate action; ready=false with human-readable missing pickup/market/Driver start or eligibility reasons; ready=true with two directed legs and total km/min; 401 session expiry; 429/503/network error with retry. Existing edit/cancel and matching preview remain functional.
+- Authorization: existing GET /api/farmer/requests/:id/route-preview validates session, Farmer role, ownership, pending state. API returns no other Farmer coordinates or full matrix.
+- Data/API: existing requests, vehicles and availability; GET endpoint unchanged. No writes or schema changes.
+- Acceptance: never show fabricated distance, clearly label single-pickup estimate as provisional, fixed Driver start → own pickup → one market, no Driver acceptance or booking. Verification gate: mobile tests, TypeScript and Expo Android JavaScript bundle.
