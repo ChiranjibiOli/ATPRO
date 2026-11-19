@@ -113,3 +113,11 @@ Pre-run audit: main 4cfe7d965381a12314ce7cd18b0c1af39c1b2c8d, latest CI 43883460
 Audited main b7cfbd332b057ee7c52ad5f4ddabfef69b9d685c, latest CI passed and zero open issues. Existing protected route preview API and OSRM helper were already present; skipped rewriting them. Recorded the two-slice plan in DEVELOPMENT_PLAN before implementation.
 Slice 27: typed FarmerRoadPreview client and authenticated GET call using stored bearer session, no arbitrary coordinate input.
 Slice 28: RequestDetailScreen road preview action with loading, not-ready reasons, road legs, totals, errors and retry. Existing matching, edit and cancel flows preserved. No DB or API changes. The feature is a single-request estimate, not a multi-Farmer optimized route, capacity reservation or booking. Verify final CI separately; physical Android, live public OSRM and APK are not verified. Next: multi-Farmer fixed-endpoint Clarke-Wright adaptation and constraint-aware 2-opt.
+
+
+## 2026-11-19 — Directed open-route optimizer foundation
+Pre-run audit: main 3d646a38d3879167b14d0e11e34bd3c6dcdc77a8, latest GitHub CI successful, no open issues. Existing OSRM helper, single-Farmer route preview, Farmer UI, and allocation remain unchanged. Plan committed before code: docs/OPTIMIZATION_PLAN_2026-11-19.md (daf44df14476b6f15cb8059f9fa873ca72f0cdc5).
+- Slice 29: pure `clarkeWrightOpenRoutes` merges directed Driver-start → pickup(s) → one-market routes using actual positive open-route savings and hard feasibility checks.
+- Slice 30: pure `improveFixedEndpointTwoOpt` improves pickup ordering with directed matrix recomputation, preserving endpoints and rejecting infeasible changes.
+- New backend module and automated tests only. No API route, database change, Expo screen, reservation, trip or Driver acceptance. Tested locally with Node 22 domain tests; full GitHub CI must be verified against latest commit separately.
+- Next two: protected multi-Farmer same-market/date candidate orchestration with privacy and authoritative compatibility/availability, then read-only native multi-pickup summary after OSRM integration.
