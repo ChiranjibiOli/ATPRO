@@ -300,3 +300,15 @@ Existing native Farmer create/edit request form now accepts optional pickup/mark
 - Authorization: existing GET /api/farmer/requests/:id/route-preview validates session, Farmer role, ownership, pending state. API returns no other Farmer coordinates or full matrix.
 - Data/API: existing requests, vehicles and availability; GET endpoint unchanged. No writes or schema changes.
 - Acceptance: never show fabricated distance, clearly label single-pickup estimate as provisional, fixed Driver start → own pickup → one market, no Driver acceptance or booking. Verification gate: mobile tests, TypeScript and Expo Android JavaScript bundle.
+
+
+## Built backend domain slices (2026-11-19): fixed-endpoint Clarke-Wright and 2-opt
+- Roles and goal: future authenticated Farmer preview / Driver proposal; currently pure backend planning functions, **not** a public screen or endpoint.
+- Fields: ordered pickup IDs, positive weight kg, optional maximum transit seconds, pickup arrival window, vehicle maximum kg, directed OSRM distance and duration matrices, optional maximum route duration, trusted compatibility predicate.
+- UI states: no UI action added. Future integration must display loading, missing coordinates, infeasible/unassigned, network failure and retry; do not show private Farmer coordinates to other Farmers.
+- Actions: `clarkeWrightOpenRoutes` merges positive-saving routes with fixed Driver start and market end; `improveFixedEndpointTwoOpt` reverses pickup segments when strictly shorter and feasible.
+- Validation: 1–23 unique pickups, finite nonnegative square matrices, positive finite capacity/weights, optional perishability/window constraints, integer indices. Invalid contracts throw TypeError; infeasible candidates return reason.
+- Authorization: caller must enforce authenticated role, request/vehicle ownership and group market/date restrictions before calling. No direct public API, no writes, no booking.
+- Entities/flow: existing requests, vehicles, availability and OSRM matrix; no schema changes.
+- Acceptance/tests: endpoints never move, directed asymmetric arcs fully recomputed, no capacity overrun, no invalid perishability/window or incompatible merge, deterministic results and unchanged inputs. `apps/api/tests/optimization.test.js`.
+- Limitations: no same-market grouping orchestration, actual pickup schedule mapping, route persistence, driver acceptance, cost sharing or Expo mobile UI. No claim of end-to-end route optimization.
