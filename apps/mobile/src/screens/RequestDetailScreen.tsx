@@ -1,7 +1,7 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
 import {ActivityIndicator,Alert,ScrollView,StyleSheet,Text,View} from 'react-native';
 import {ActionButton} from '../components/ActionButton';
-import {ApiError,farmerRequestDetail,cancelFarmerRequest,farmerRequestMatches,farmerRoadPreview,type FarmerRoadPreview,type RequestMatchPreview,type TransportRequest} from '../auth/client';
+import {ApiError,farmerRequestDetail,cancelFarmerRequest,farmerRequestMatches,farmerRoadPreview,farmerOptimizedPreview,type FarmerOptimizedPreview,type FarmerRoadPreview,type RequestMatchPreview,type TransportRequest} from '../auth/client';
 import {COLORS} from '../theme/palette';
 
 type Props={token:string;id:string;onBack:()=>void;onEdit:(request:TransportRequest)=>void;onExpired:()=>void};
@@ -11,6 +11,9 @@ export function RequestDetailScreen({token,id,onBack,onEdit,onExpired}:Props){
  const [previewLoading,setPreviewLoading]=useState(false);
  const [road,setRoad]=useState<FarmerRoadPreview|null>(null);
  const [roadLoading,setRoadLoading]=useState(false);
+ const [optimized,setOptimized]=useState<FarmerOptimizedPreview|null>(null);
+ const [optimizedLoading,setOptimizedLoading]=useState(false);
+ const [optimizedError,setOptimizedError]=useState<string|null>(null);
  const [roadError,setRoadError]=useState<string|null>(null);
  const [previewError,setPreviewError]=useState<string|null>(null);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
@@ -39,12 +42,21 @@ export function RequestDetailScreen({token,id,onBack,onEdit,onExpired}:Props){
    setRoadError(e instanceof Error?e.message:'Could not calculate road route.');}
   finally{setRoadLoading(false);}
  };
+ const checkOptimized=async()=>{
+  if(!request||request.status!=='pending'||optimizedLoading)return;
+  setOptimizedLoading(true);setOptimizedError(null);setOptimized(null);
+  try{setOptimized(await farmerOptimizedPreview(token,request.id));}
+  catch(e){if(e instanceof ApiError&&e.status===401){expired.current();return;}
+   setOptimizedError(e instanceof Error?e.message:'Could not calculate shared route.');}
+  finally{setOptimizedLoading(false);}
+ };
  const reasonLabel=(reason:string):string=>({
   missing_pickup_coordinates:'Add pickup latitude and longitude by editing this request.',
   missing_market_coordinates:'Add destination market latitude and longitude by editing this request.',
   missing_driver_start_coordinates:'The selected Driver has not declared starting coordinates for this date.',
   no_eligible_vehicle:'No registered vehicle currently passes the weight, handling and availability checks.',
   vehicle_not_eligible:'The selected vehicle is not eligible for this request.',
+  no_feasible_route:'No shared route satisfies capacity, pickup windows, availability and perishability.',
  } as Record<string,string>)[reason]??'Route not ready: '+reason.replace(/_/g,' ');
  const km=(meters:number)=> (meters/1000).toFixed(2)+' km';
  const minutes=(seconds:number)=> (seconds/60).toFixed(1)+' min';
@@ -73,6 +85,7 @@ export function RequestDetailScreen({token,id,onBack,onEdit,onExpired}:Props){
    <Text style={s.line}>Maximum transit: {request.maxTransitHours} hours</Text>
    <Text style={s.line}>Revision: {request.revision}</Text>
    {request.status==='pending'?<>
+    <ActionButton label="Preview shared optimized route" disabled={busy||optimizedLoading} variant="secondary" onPress={()=>void checkOptimized()}/>
     <ActionButton label="Preview road route" disabled={busy||roadLoading} variant="secondary" onPress={()=>void checkRoad()}/>
     <ActionButton label="Preview compatible vehicles and market group" disabled={busy||previewLoading} variant="secondary" onPress={()=>void checkMatches()}/>
     <ActionButton label="Edit pending request" disabled={busy} onPress={()=>onEdit(request)}/>
@@ -96,6 +109,25 @@ export function RequestDetailScreen({token,id,onBack,onEdit,onExpired}:Props){
       <Text style={s.line}>{road.note}</Text>
     </>}
     <Text style={s.line}>Road estimates are provisional. No other Farmer pickups, optimization, reservation or Driver acceptance are included.</Text>
+  </View>:null}
+  {optimizedLoading?<ActivityIndicator color={COLORS.forest}/>:null}
+  {optimizedError?<View accessibilityRole="alert" style={s.card}><Text style={s.error}>{optimizedError}</Text><ActionButton label="Retry shared route preview" onPress={()=>void checkOptimized()}/></View>:null}
+  {optimized?<View style={s.card}>
+    <Text style={s.heading}>Proposed shared pickup route</Text>
+    {!optimized.ready?<>
+      <Text style={s.line}>A shared route is not ready.</Text>
+      {optimized.reasons.map(reason=><Text key={reason} style={s.line}>• {reasonLabel(reason)}</Text>)}
+    </>:<>
+      <Text style={s.line}>Vehicle type: {optimized.vehicleType.replace('_',' ')}</Text>
+      <Text style={s.line}>Pickups on this proposed route: {optimized.pickupCount}</Text>
+      <Text style={s.line}>Your pickup position: {optimized.ownPickupPosition} of {optimized.pickupCount}</Text>
+      <Text style={s.line}>Total load: {optimized.totalWeightKg} kg</Text>
+      <Text style={s.line}>Road distance: {km(optimized.totalDistanceMeters)}</Text>
+      <Text style={s.line}>Estimated duration (including waiting): {minutes(optimized.totalDurationSeconds)}</Text>
+      <Text style={s.line}>Distance reduced by 2-opt: {km(optimized.distanceSavedMeters)}</Text>
+      <Text style={s.line}>Other pending requests not on this route: {optimized.excludedRequestCount}</Text>
+      <Text style={s.line}>{optimized.note}</Text>
+    </>}
   </View>:null}
   {previewLoading?<ActivityIndicator color={COLORS.forest}/>:null}
   {previewError?<View accessibilityRole="alert" style={s.card}><Text style={s.error}>{previewError}</Text><ActionButton label="Retry matching preview" onPress={()=>void checkMatches()}/></View>:null}

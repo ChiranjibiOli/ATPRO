@@ -92,3 +92,11 @@ export type FarmerRoadPreview =
 export const farmerRoadPreview=(token:string,id:string,vehicleId?:string)=>
  apiRequest<FarmerRoadPreview>('/api/farmer/requests/'+encodeURIComponent(id)+'/route-preview'+
   (vehicleId?'?vehicleId='+encodeURIComponent(vehicleId):''),'GET',undefined,token);
+
+/** Read-only multi-Farmer route summary. Never contains other Farmers' locations or IDs. */
+export type FarmerOptimizedPreview =
+ | {ready:false;reasons:string[];vehicleId:string|null}
+ | {ready:true;vehicleId:string;vehicleType:Vehicle['vehicleType'];pickupCount:number;ownPickupPosition:number;excludedRequestCount:number;totalWeightKg:number;totalDistanceMeters:number;totalDurationSeconds:number;distanceSavedMeters:number;note:string};
+export const farmerOptimizedPreview=(token:string,id:string,vehicleId?:string)=>
+ apiRequest<FarmerOptimizedPreview>('/api/farmer/requests/'+encodeURIComponent(id)+'/optimized-preview'+
+  (vehicleId?'?vehicleId='+encodeURIComponent(vehicleId):''),'GET',undefined,token);

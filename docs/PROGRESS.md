@@ -121,3 +121,9 @@ Pre-run audit: main 3d646a38d3879167b14d0e11e34bd3c6dcdc77a8, latest GitHub CI s
 - Slice 30: pure `improveFixedEndpointTwoOpt` improves pickup ordering with directed matrix recomputation, preserving endpoints and rejecting infeasible changes.
 - New backend module and automated tests only. No API route, database change, Expo screen, reservation, trip or Driver acceptance. Tested locally with Node 22 domain tests; full GitHub CI must be verified against latest commit separately.
 - Next two: protected multi-Farmer same-market/date candidate orchestration with privacy and authoritative compatibility/availability, then read-only native multi-pickup summary after OSRM integration.
+
+## 2026-11-20 — Optimized multi-Farmer preview pair
+Pre-run audit: main 8c3c1efff55fab86e1e48710ae6c3493e497fc5f; GitHub CI 44533540537 passed; zero open issues. Existing pure Clarke-Wright/2-opt, OSRM, and single-Farmer preview preserved. Plan recorded first in DEVELOPMENT_PLAN.md commit b8edfa02e6a98e820d63d37df34c32f8798dd90f.
+Slice 31: new optimized-preview.js and authenticated GET /api/farmer/requests/:id/optimized-preview. Same-market/date, fixed market coordinates, vehicle/body/weight/availability and route time/perishability constraints; directed matrix, Clarke-Wright and 2-opt; sanitized response. Read-only.
+Slice 32: Farmer RequestDetailScreen native shared route preview with typed API client, loading/retry/not-ready and aggregate summary. No new DB schema, no booking or Driver acceptance. Tests added in optimized-preview.test.js.
+CI and final push verification must be checked against final commit; no physical Android, APK or hosted backend. Next: stronger pairwise product compatibility and multi-vehicle route allocation, then driver offer/acceptance workflow.

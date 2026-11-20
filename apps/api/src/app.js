@@ -5,6 +5,7 @@ import { validateTransportRequest, createRequest } from './requests.js';
 import { previewRequestMatches } from './matching.js';
 import { routeReadiness, summarizeRoadMatrix } from './route-preview.js';
 import { roadMatrix, RoutingUnavailableError } from './osrm.js';
+import { optimizedFarmerPreview } from './optimized-preview.js';
 import { newToken, newUser, normalizeEmail, passwordHash, passwordMatches, publicUser, tokenDigest, validateRegistration } from './auth.js';
 
 const respond = (res, status, data) => {
@@ -188,6 +189,37 @@ export function createApp({ store, now = () => Date.now(), limiter = createLimit
         } catch (error) {
           if (!(error instanceof RoutingUnavailableError) && !(error instanceof TypeError)) console.error('Road preview failed:', error);
           return respond(res, 503, { error: 'Road routing is currently unavailable. Try again later.' });
+        }
+      }
+      // Multi-Farmer optimized preview: never return another Farmer's pickup coordinates or IDs.
+      const optParts = path.split('/');
+      const optId = optParts.length === 6 && optParts[1] === 'api' &&
+        optParts[2] === 'farmer' && optParts[3] === 'requests' &&
+        optParts[5] === 'optimized-preview' && /^[0-9a-f-]{36}$/.test(optParts[4])
+        ? optParts[4] : null;
+      if (optId && req.method === 'GET') {
+        const token = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(req.headers.authorization ?? '')?.[1];
+        if (!token) return respond(res, 401, { error: 'Authentication required.' });
+        const db = await store.read();
+        const session = db.sessions.find(s => s.tokenHash === tokenDigest(token) && Date.parse(s.expiresAt) > now());
+        const user = session && db.users.find(u => u.id === session.userId);
+        if (!user) return respond(res, 401, { error: 'Session expired.' });
+        if (user.role !== 'farmer') return respond(res, 403, { error: 'Farmer access required.' });
+        const request = (db.requests ?? []).find(r => r.id === optId && r.farmerId === user.id);
+        if (!request) return respond(res, 404, { error: 'Request not found.' });
+        if (request.status !== 'pending') return respond(res, 409, { error: 'Only pending requests can be previewed.' });
+        const query = new URL(req.url, 'http://localhost').searchParams;
+        const vehicleId = query.get('vehicleId');
+        if ([...query.keys()].some(key => key !== 'vehicleId') ||
+            (vehicleId !== null && !/^[0-9a-f-]{36}$/.test(vehicleId)))
+          return respond(res, 400, { error: 'Invalid optimized preview query.' });
+        if (!limiter('optimized-preview:' + user.id)) return respond(res, 429, { error: 'Too many route previews. Try again later.' });
+        try {
+          const preview = await optimizedFarmerPreview(db,request,{vehicleId,now:now(),matrixProvider});
+          return respond(res, 200, preview);
+        } catch (error) {
+          if (!(error instanceof RoutingUnavailableError) && !(error instanceof TypeError)) console.error('Optimized preview failed:',error);
+          return respond(res, 503, { error: 'Road optimization is currently unavailable. Try again later.' });
         }
       }
       // Farmer-owned request lifecycle: do not reveal the existence of another farmer's ID.

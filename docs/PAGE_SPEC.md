@@ -312,3 +312,12 @@ Existing native Farmer create/edit request form now accepts optional pickup/mark
 - Entities/flow: existing requests, vehicles, availability and OSRM matrix; no schema changes.
 - Acceptance/tests: endpoints never move, directed asymmetric arcs fully recomputed, no capacity overrun, no invalid perishability/window or incompatible merge, deterministic results and unchanged inputs. `apps/api/tests/optimization.test.js`.
 - Limitations: no same-market grouping orchestration, actual pickup schedule mapping, route persistence, driver acceptance, cost sharing or Expo mobile UI. No claim of end-to-end route optimization.
+
+## Built 2026-11-20: Farmer shared optimized route preview
+- Role/goal: authenticated Farmer views a provisional multi-Farmer route for their own pending request without seeing another Farmer's private data.
+- UI: existing RequestDetailScreen; action "Preview shared optimized route", loading spinner, retryable API failure, not-ready reason codes, summary (vehicle type, own pickup position, number of pickups, total kg, km, duration, 2-opt improvement, excluded count), and explicit nonbinding warning. No editable fields.
+- Backend: GET /api/farmer/requests/:id/optimized-preview?vehicleId=UUID (optional). Farmer token and request ownership required; request pending. 401 unauthenticated, 403 wrong role, 404 foreign/unknown, 409 nonpending, 400 invalid query, 429 throttle, 503 routing failure.
+- Data: saved requests, vehicles, availability, coordinates; no writes. Same normalized market/Nepal date and market coordinates, compatible body/handling and vehicle availability, capacity, pickup time, perishability and route duration. Directed OSRM table, adapted Clarke-Wright, then fixed-endpoint 2-opt. Bound at 23 pickups and ensure caller included.
+- Privacy: response deliberately excludes other Farmer IDs, coordinates, names, addresses, and full pickup sequence. Only own pickup ordinal and aggregates.
+- Acceptance/tests: authenticated owner can preview; other roles/owners cannot; missing coordinates and infeasible route show reasons; no fabricated road distances; deterministic algorithm fixtures and nonmutation; API tests, mobile tests, TypeScript and Expo Android JS export. Physical Android and live OSRM are not verified.
+- Limitations: read-only heuristic, no actual booking or driver acceptance; volume, service times, traffic, vehicle approvals and cross-category product compatibility remain unverified. For now only matching handling classes share a route.
