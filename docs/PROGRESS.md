@@ -127,3 +127,10 @@ Pre-run audit: main 8c3c1efff55fab86e1e48710ae6c3493e497fc5f; GitHub CI 44533540
 Slice 31: new optimized-preview.js and authenticated GET /api/farmer/requests/:id/optimized-preview. Same-market/date, fixed market coordinates, vehicle/body/weight/availability and route time/perishability constraints; directed matrix, Clarke-Wright and 2-opt; sanitized response. Read-only.
 Slice 32: Farmer RequestDetailScreen native shared route preview with typed API client, loading/retry/not-ready and aggregate summary. No new DB schema, no booking or Driver acceptance. Tests added in optimized-preview.test.js.
 CI and final push verification must be checked against final commit; no physical Android, APK or hosted backend. Next: stronger pairwise product compatibility and multi-vehicle route allocation, then driver offer/acceptance workflow.
+
+
+## 2026-11-21 — pairwise compatibility + multi-vehicle allocation
+Pre-run: main 6d0cc3c2461dc53769b2f827c2754d62207c8512, latest CI successful, zero open issues. Inspected tree, optimization and matching source, tests and docs. Plan recorded in DEVELOPMENT_PLAN before code.
+Slice 33: Added pure symmetric same-handling-class co-loading policy, with unsupported classes rejected.
+Slice 34: Existing read-only first-fit-decreasing group allocation now prevents incompatible handling classes from sharing a vehicle while allowing separate eligible vehicles to carry them. Existing Farmer RequestDetailScreen and GET /api/farmer/requests/:id/matches reused; no UI, API contract or JSON schema change. Added tests for symmetry, rejection, capacity, determinism and immutability; adjusted previous mixed-handling expectation to match new safety policy.
+CI and commit verification tracked separately; no physical Expo Go/Android testing, hosted backend, APK, booking or live OSRM request. Next: Driver offer proposal persistence with safe state transitions; Driver acceptance with transactional capacity conflict checks.
