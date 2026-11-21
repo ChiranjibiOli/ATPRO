@@ -1,4 +1,4 @@
-import { nepalPickupAt } from './requests.js';
+import { compatibleHandlingPair } from './product-compatibility.js';
 import { previewVehicleEligibility } from './availability.js';
 
 const normalizeMarket = name => typeof name === 'string' ? name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('en') : '';
@@ -64,6 +64,7 @@ export function previewGroupAllocation(db, requests, vehicles, now = Date.now())
     capacityGrams: Math.floor(vehicle.maximumWeightKg * 1000 + 1e-7),
     usedGrams: 0,
     count: 0,
+    handlingRequest: null,
   }));
   let assignedGrams = 0;
   let assignedRequestCount = 0;
@@ -74,6 +75,7 @@ export function previewGroupAllocation(db, requests, vehicles, now = Date.now())
     if (!Number.isSafeInteger(grams) || grams <= 0) continue;
     for (const bin of bins) {
       if (grams > bin.capacityGrams - bin.usedGrams) continue;
+      if (bin.handlingRequest && !compatibleHandlingPair(bin.handlingRequest,request)) continue;
       const declaration = (db.availability ?? []).find(a =>
         a.vehicleId === bin.vehicle.id && a.driverId === bin.vehicle.driverId && a.date === pickup.date);
       const basic = previewVehicleEligibility(bin.vehicle, declaration,
@@ -83,6 +85,7 @@ export function previewGroupAllocation(db, requests, vehicles, now = Date.now())
       if (request.handling === 'fragile' && bin.vehicle.bodyType === 'open') continue;
       if (!['standard','fragile','chilled'].includes(request.handling) ||
           !['vegetable','fruit','grain','other'].includes(request.category)) continue;
+      bin.handlingRequest ??= request;
       bin.usedGrams += grams;
       bin.count++;
       assignedGrams += grams;
@@ -102,6 +105,6 @@ export function previewGroupAllocation(db, requests, vehicles, now = Date.now())
       allocatedWeightKg: b.usedGrams / 1000,
       remainingWeightKg: (b.capacityGrams - b.usedGrams) / 1000,
     })),
-    note: 'Provisional first-fit weight allocation only. No capacity is reserved. Road travel, time windows along a route, perishability, volume, driver approval/acceptance and bookings are not verified.',
+    note: 'Provisional first-fit weight allocation with conservative same-handling-class co-loading only. No capacity is reserved. Road travel, time windows along a route, perishability, volume, driver approval/acceptance and bookings are not verified.',
   };
 }
