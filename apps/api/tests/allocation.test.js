@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { previewGroupAllocation, previewRequestMatches } from '../src/matching.js';
+import { compatibleHandlingPair, compatibleHandlingLoad } from '../src/product-compatibility.js';
 
 const date='2030-06-15';
 const pickup=(time='10:00')=>new Date(Date.parse(date+'T'+time+':00Z')-345*60000).toISOString();
@@ -31,9 +32,10 @@ test('compatibility and declared availability apply to each allocated request',(
  const r=[request('chilled',250,'chilled'),request('fragile',250,'fragile'),request('standard',200)];
  const db={requests:r,vehicles:v,availability:availability(v)};
  const out=previewGroupAllocation(db,r,v,now);
- assert.equal(out.assignedRequestCount,3);
- assert.equal(out.vehicles.find(x=>x.vehicleId==='cold').allocatedWeightKg,500);
+ assert.equal(out.assignedRequestCount,2);
+ assert.equal(out.vehicles.find(x=>x.vehicleId==='cold').allocatedWeightKg,250);
  assert.equal(out.vehicles.find(x=>x.vehicleId==='open').allocatedWeightKg,200);
+ assert.equal(out.unassignedWeightKg,250);
  const noAvailability=previewGroupAllocation({...db,availability:[]},r,v,now);
  assert.equal(noAvailability.assignedRequestCount,0);
  assert.equal(noAvailability.unassignedRequestCount,3);
@@ -65,4 +67,28 @@ test('fractional kg never overfills capacity',()=>{
  assert.equal(out.assignedWeightKg,0.3);
  assert.equal(out.unassignedWeightKg,0.001);
  assert.equal(out.vehicles[0].remainingWeightKg,0);
+});
+
+test('pairwise compatibility is symmetric, rejects unknown classes and mixed loads',()=>{
+ for(const handling of ['standard','fragile','chilled']) {
+  assert.equal(compatibleHandlingPair({handling},{handling}),true);
+ }
+ for(const a of ['standard','fragile','chilled']) for(const b of ['standard','fragile','chilled']) {
+  assert.equal(compatibleHandlingPair({handling:a},{handling:b}),compatibleHandlingPair({handling:b},{handling:a}));
+  if(a!==b) assert.equal(compatibleHandlingPair({handling:a},{handling:b}),false);
+ }
+ assert.equal(compatibleHandlingPair({handling:'unknown'},{handling:'unknown'}),false);
+ assert.equal(compatibleHandlingLoad([{handling:'chilled'},{handling:'standard'}]),false);
+ assert.equal(compatibleHandlingLoad([{handling:'fragile'},{handling:'fragile'}]),true);
+});
+test('multi-vehicle assignment separates handling classes without overloading or mutating',()=>{
+ const v=[vehicle('a',500,'refrigerated'),vehicle('b',500,'covered'),vehicle('c',500,'covered')];
+ const r=[request('cold',300,'chilled'),request('fragile',250,'fragile'),request('normal',200,'standard')];
+ const db={availability:availability(v)};const before=JSON.stringify(db);
+ const out=previewGroupAllocation(db,r,v,now);
+ assert.equal(out.assignedRequestCount,3);
+ assert.equal(out.vehicles.length,3);
+ assert.ok(out.vehicles.every(x=>x.allocatedWeightKg<=500));
+ assert.equal(JSON.stringify(db),before);
+ assert.deepEqual(previewGroupAllocation(db,[...r].reverse(),[...v].reverse(),now),out);
 });
