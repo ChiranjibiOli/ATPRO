@@ -321,3 +321,14 @@ Existing native Farmer create/edit request form now accepts optional pickup/mark
 - Privacy: response deliberately excludes other Farmer IDs, coordinates, names, addresses, and full pickup sequence. Only own pickup ordinal and aggregates.
 - Acceptance/tests: authenticated owner can preview; other roles/owners cannot; missing coordinates and infeasible route show reasons; no fabricated road distances; deterministic algorithm fixtures and nonmutation; API tests, mobile tests, TypeScript and Expo Android JS export. Physical Android and live OSRM are not verified.
 - Limitations: read-only heuristic, no actual booking or driver acceptance; volume, service times, traffic, vehicle approvals and cross-category product compatibility remain unverified. For now only matching handling classes share a route.
+
+
+## Built 2026-11-21: Safe co-loading preview (existing Farmer RequestDetailScreen)
+- Role/goal: Farmer inspects a provisional same-market/date allocation; no new screen or button.
+- Inputs: existing category, handling class, quantity kg, vehicle body/capacity and availability. No new form fields.
+- Actions/UI: existing preview, refresh, loading, error and empty states. Same authenticated GET /api/farmer/requests/:id/matches; no API shape change.
+- Authorization: Farmer session and request ownership enforced by existing endpoint; response returns aggregate vehicle allocation, never other Farmers' identities.
+- Validation: pairwise symmetric same-handling-class policy, with unknown classes rejected; vehicle body, weight, date/time eligibility still apply.
+- Entities: requests, vehicles, availability (read only). No persisted assignments or bookings.
+- Acceptance/tests: different handling classes cannot share a vehicle; separate vehicles may carry them; deterministic, capacity safe, immutable, no private details.
+- Limitation: same-class policy is conservative, not crop-level odor or fragility modeling; no route feasibility or driver acceptance.
