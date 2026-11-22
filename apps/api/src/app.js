@@ -224,8 +224,8 @@ export function createApp({ store, now = () => Date.now(), limiter = createLimit
         }
       }
       // Driver offers: proposal creation is Farmer-owned; decisions are Driver-owned.
-      const farmerOfferParts = /^\\/api\\/farmer\\/requests\\/([0-9a-f-]{36})\\/offers$/.exec(path);
-      const driverDecisionParts = /^\\/api\\/driver\\/offers\\/([0-9a-f-]{36})\\/(accept|decline)$/.exec(path);
+      const farmerOfferParts = /^\/api\/farmer\/requests\/([0-9a-f-]{36})\/offers$/.exec(path);
+      const driverDecisionParts = /^\/api\/driver\/offers\/([0-9a-f-]{36})\/(accept|decline)$/.exec(path);
       if ((farmerOfferParts && req.method === 'POST') ||
           (path === '/api/driver/offers' && req.method === 'GET') ||
           (driverDecisionParts && req.method === 'POST')) {
