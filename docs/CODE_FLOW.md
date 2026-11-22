@@ -60,3 +60,11 @@ Farmer create/edit form -> optional paired decimal latitude/longitude -> POST/PA
 
 ## 2026-11-20 Shared route preview code flow
 Farmer RequestDetailScreen -> authenticated farmerOptimizedPreview() -> GET /api/farmer/requests/:id/optimized-preview -> token, role, owner, pending and query checks -> optimizedFarmerPreview -> eligible vehicle + declared start -> same market/date/coordinate candidate pool -> directed OSRM matrix -> clarkeWrightOpenRoutes -> select route containing requesting Farmer -> improveFixedEndpointTwoOpt -> sanitized aggregate (no other Farmer location/ID/order) -> Farmer UI. All read-only. No trip creation or capacity reservation.
+
+
+## 2026-11-22 Driver offer API flow (backend only)
+1. Farmer POST /api/farmer/requests/:id/offers with only vehicleId. Authenticate session, require Farmer role and own pending request; validate vehicle registration, capacity, handling, Driver date/time and stored three coordinates.
+2. Server calls directed OSRM matrix for Driver start → Farmer pickup → one market. Evaluate a one-pickup route with fixed endpoints, pickup window, Driver availability and max transit time. Return 409 if infeasible, 503 if road service fails.
+3. Serialized JSON transaction rechecks request revision and eligibility, rejects a duplicate active proposal, stores 30-minute proposed offer. No capacity reservation yet.
+4. Driver GET /api/driver/offers lists only their offers, with empty array if none. Driver POST /api/driver/offers/:id/decline marks proposal declined; accept runs in a serialized transaction and rechecks expiry, ownership, request revision, eligibility and vehicle/date conflict. Acceptance writes trip, tripAssignment and request assigned status atomically; repeated acceptance returns 409.
+5. Native Farmer/Driver offer screens, multi-Farmer trip confirmation, pickup/delivery and cost sharing are not implemented. A live multi-Farmer preview is not a bookable offer.
