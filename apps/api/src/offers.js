@@ -3,7 +3,7 @@ import { nepalPickupAt } from './requests.js';
 import { previewVehicleEligibility } from './availability.js';
 import { validateCoordinates } from './geo.js';
 import { evaluatePickupRoute } from './optimization.js';
-import { areHandlingClassesCompatible } from './product-compatibility.js';
+import { compatibleHandlingPair } from './product-compatibility.js';
 
 const localDate = iso => new Date(Date.parse(iso) + 345 * 60000).toISOString().slice(0,10);
 const localTime = iso => new Date(Date.parse(iso) + 345 * 60000).toISOString().slice(11,16);
@@ -22,7 +22,7 @@ export function offerReadiness(db, request, vehicleId, now) {
     return {error:'Vehicle is not eligible for this request.'};
   if (request.handling==='chilled'&&vehicle.bodyType!=='refrigerated' ||
       request.handling==='fragile'&&vehicle.bodyType==='open' ||
-      !areHandlingClassesCompatible(request.handling,request.handling))
+      !compatibleHandlingPair(request,request))
     return {error:'Vehicle does not support the product handling requirement.'};
   if (![request.pickupCoordinates,request.marketCoordinates,declaration?.startCoordinates].every(p=>validateCoordinates(p).valid))
     return {error:'Pickup, market and Driver start coordinates are required.'};
