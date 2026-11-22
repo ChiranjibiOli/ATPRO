@@ -6,6 +6,7 @@ import { previewRequestMatches } from './matching.js';
 import { routeReadiness, summarizeRoadMatrix } from './route-preview.js';
 import { roadMatrix, RoutingUnavailableError } from './osrm.js';
 import { optimizedFarmerPreview } from './optimized-preview.js';
+import { offerReadiness, proposedOffer, transitionOffer, offerPublic } from './offers.js';
 import { newToken, newUser, normalizeEmail, passwordHash, passwordMatches, publicUser, tokenDigest, validateRegistration } from './auth.js';
 
 const respond = (res, status, data) => {
@@ -221,6 +222,59 @@ export function createApp({ store, now = () => Date.now(), limiter = createLimit
           if (!(error instanceof RoutingUnavailableError) && !(error instanceof TypeError)) console.error('Optimized preview failed:',error);
           return respond(res, 503, { error: 'Road optimization is currently unavailable. Try again later.' });
         }
+      }
+      // Driver offers: proposal creation is Farmer-owned; decisions are Driver-owned.
+      const farmerOfferParts = /^\\/api\\/farmer\\/requests\\/([0-9a-f-]{36})\\/offers$/.exec(path);
+      const driverDecisionParts = /^\\/api\\/driver\\/offers\\/([0-9a-f-]{36})\\/(accept|decline)$/.exec(path);
+      if ((farmerOfferParts && req.method === 'POST') ||
+          (path === '/api/driver/offers' && req.method === 'GET') ||
+          (driverDecisionParts && req.method === 'POST')) {
+        const token = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(req.headers.authorization ?? '')?.[1];
+        if (!token) return respond(res,401,{error:'Authentication required.'});
+        const db=await store.read();
+        const session=(db.sessions??[]).find(s=>s.tokenHash===tokenDigest(token)&&Date.parse(s.expiresAt)>now());
+        const user=session&&(db.users??[]).find(u=>u.id===session.userId);
+        if(!user)return respond(res,401,{error:'Session expired.'});
+        const expected=farmerOfferParts?'farmer':'driver';
+        if(user.role!==expected)return respond(res,403,{error:expected==='farmer'?'Farmer access required.':'Driver access required.'});
+        if(path==='/api/driver/offers') {
+          const offers=(db.offers??[]).filter(o=>o.driverId===user.id).map(offerPublic)
+            .sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+          return respond(res,200,{offers});
+        }
+        if(driverDecisionParts) {
+          const result=await store.transaction(data=>{
+            const outcome=transitionOffer(data,driverDecisionParts[1],user.id,driverDecisionParts[2],now());
+            return {write:outcome.status===200,value:outcome};
+          });
+          return respond(res,result.status,result.status===200?{offer:result.offer,...(result.trip?{trip:result.trip}:{})}:{error:result.error});
+        }
+        const request=(db.requests??[]).find(r=>r.id===farmerOfferParts[1]&&r.farmerId===user.id);
+        if(!request)return respond(res,404,{error:'Request not found.'});
+        const input=await bodyJson(req);
+        if(!input||typeof input!=='object'||Array.isArray(input)||
+          Object.keys(input).length!==1||!/^[0-9a-f-]{36}$/.test(input.vehicleId??''))
+          return respond(res,400,{error:'A valid vehicleId is required.'});
+        const ready=offerReadiness(db,request,input.vehicleId,now());
+        if(ready.error)return respond(res,409,{error:ready.error});
+        if(!limiter('offer-proposal:'+user.id))return respond(res,429,{error:'Too many proposals. Try again later.'});
+        let proposal;
+        try {proposal=proposedOffer(db,request,ready,await matrixProvider(ready.points),now());}
+        catch(error){return respond(res,503,{error:'Road routing is unavailable. Try again later.'});}
+        if(proposal.error)return respond(res,409,{error:proposal.error});
+        const outcome=await store.transaction(data=>{
+          const current=(data.requests??[]).find(r=>r.id===request.id&&r.farmerId===user.id);
+          const valid=current&&offerReadiness(data,current,input.vehicleId,now());
+          if(!current||current.status!=='pending'||(current.revision??1)!==proposal.offer.requestRevision||
+            valid.error||current.quantityKg!==proposal.offer.weightKg||
+            current.marketName!==proposal.offer.marketName||
+            (data.offers??[]).some(o=>o.requestId===current.id&&o.vehicleId===input.vehicleId&&
+              o.status==='proposed'&&Date.parse(o.expiresAt)>now()))
+            return {value:null};
+          data.offers??=[];data.offers.push(proposal.offer);
+          return {write:true,value:offerPublic(proposal.offer)};
+        });
+        return outcome?respond(res,201,{offer:outcome}):respond(res,409,{error:'Request or offer changed. Reload and retry.'});
       }
       // Farmer-owned request lifecycle: do not reveal the existence of another farmer's ID.
       const parts = path.split('/');
