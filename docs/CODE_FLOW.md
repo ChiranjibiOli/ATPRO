@@ -68,3 +68,7 @@ Farmer RequestDetailScreen -> authenticated farmerOptimizedPreview() -> GET /api
 3. Serialized JSON transaction rechecks request revision and eligibility, rejects a duplicate active proposal, stores 30-minute proposed offer. No capacity reservation yet.
 4. Driver GET /api/driver/offers lists only their offers, with empty array if none. Driver POST /api/driver/offers/:id/decline marks proposal declined; accept runs in a serialized transaction and rechecks expiry, ownership, request revision, eligibility and vehicle/date conflict. Acceptance writes trip, tripAssignment and request assigned status atomically; repeated acceptance returns 409.
 5. Native Farmer/Driver offer screens, multi-Farmer trip confirmation, pickup/delivery and cost sharing are not implemented. A live multi-Farmer preview is not a bookable offer.
+
+
+## 2026-11-23 offer UI code flow
+Farmer: RequestDetailScreen → farmerRequestMatches(token,id) → choose eligible vehicle → Alert confirmation → createFarmerOffer(token,id,vehicleId) → POST /api/farmer/requests/:id/offers → server ownership, eligibility, route checks → JSON offer → status/expiry displayed. Driver: Dashboard → DriverOffersScreen → driverOffers(token) → GET /api/driver/offers → choose pending unexpired offer → Alert confirmation → decideDriverOffer(token,id,accept|decline) → server ownership, revision and conflict checks → accepted trip/assignment or declined offer → refresh. No mobile action bypasses server authorization.

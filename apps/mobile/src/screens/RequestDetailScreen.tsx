@@ -1,12 +1,16 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
 import {ActivityIndicator,Alert,ScrollView,StyleSheet,Text,View} from 'react-native';
 import {ActionButton} from '../components/ActionButton';
-import {ApiError,farmerRequestDetail,cancelFarmerRequest,farmerRequestMatches,farmerRoadPreview,farmerOptimizedPreview,type FarmerOptimizedPreview,type FarmerRoadPreview,type RequestMatchPreview,type TransportRequest} from '../auth/client';
+import {ApiError,farmerRequestDetail,cancelFarmerRequest,farmerRequestMatches,farmerRoadPreview,farmerOptimizedPreview,type FarmerOptimizedPreview,type FarmerRoadPreview,type RequestMatchPreview,type TransportRequest,type TransportOffer,createFarmerOffer} from '../auth/client';
 import {COLORS} from '../theme/palette';
 
 type Props={token:string;id:string;onBack:()=>void;onEdit:(request:TransportRequest)=>void;onExpired:()=>void};
 export function RequestDetailScreen({token,id,onBack,onEdit,onExpired}:Props){
  const [request,setRequest]=useState<TransportRequest|null>(null);
+ const [selectedVehicle,setSelectedVehicle]=useState<string|null>(null);
+ const [offer,setOffer]=useState<TransportOffer|null>(null);
+ const [offerError,setOfferError]=useState<string|null>(null);
+ const [offerBusy,setOfferBusy]=useState(false);
  const [preview,setPreview]=useState<RequestMatchPreview|null>(null);
  const [previewLoading,setPreviewLoading]=useState(false);
  const [road,setRoad]=useState<FarmerRoadPreview|null>(null);
@@ -28,7 +32,7 @@ export function RequestDetailScreen({token,id,onBack,onEdit,onExpired}:Props){
  useEffect(()=>{void load();},[load]);
  const checkMatches=async()=>{
   if(!request||request.status!=='pending'||previewLoading)return;
-  setPreviewLoading(true);setPreviewError(null);setPreview(null);
+  setPreviewLoading(true);setPreviewError(null);setPreview(null);setSelectedVehicle(null);
   try{setPreview(await farmerRequestMatches(token,request.id));}
   catch(e){if(e instanceof ApiError&&e.status===401){expired.current();return;}
    setPreviewError(e instanceof Error?e.message:'Could not load preview.');}
@@ -49,6 +53,20 @@ export function RequestDetailScreen({token,id,onBack,onEdit,onExpired}:Props){
   catch(e){if(e instanceof ApiError&&e.status===401){expired.current();return;}
    setOptimizedError(e instanceof Error?e.message:'Could not calculate shared route.');}
   finally{setOptimizedLoading(false);}
+ };
+ const submitOffer=()=>{
+  if(!request||request.status!=='pending'||!selectedVehicle||offerBusy)return;
+  Alert.alert('Send transport proposal?','This is a 30-minute proposal, not a confirmed booking. The Driver must accept.',[
+   {text:'Not now',style:'cancel'},
+   {text:'Send proposal',onPress:()=>{void (async()=>{
+    setOfferBusy(true);setOfferError(null);
+    try{setOffer((await createFarmerOffer(token,request.id,selectedVehicle)).offer);}
+    catch(e){if(e instanceof ApiError&&e.status===401){expired.current();return;}
+     setOfferError(e instanceof Error?e.message:'Proposal failed.');
+     if(e instanceof ApiError&&e.status===409)await load();}
+    finally{setOfferBusy(false);}
+   })();}}
+  ]);
  };
  const reasonLabel=(reason:string):string=>({
   missing_pickup_coordinates:'Add pickup latitude and longitude by editing this request.',
@@ -87,7 +105,7 @@ export function RequestDetailScreen({token,id,onBack,onEdit,onExpired}:Props){
    {request.status==='pending'?<>
     <ActionButton label="Preview shared optimized route" disabled={busy||optimizedLoading} variant="secondary" onPress={()=>void checkOptimized()}/>
     <ActionButton label="Preview road route" disabled={busy||roadLoading} variant="secondary" onPress={()=>void checkRoad()}/>
-    <ActionButton label="Preview compatible vehicles and market group" disabled={busy||previewLoading} variant="secondary" onPress={()=>void checkMatches()}/>
+    <ActionButton label="Find vehicles for transport proposal" disabled={busy||previewLoading||offerBusy} variant="secondary" onPress={()=>void checkMatches()}/>
     <ActionButton label="Edit pending request" disabled={busy} onPress={()=>onEdit(request)}/>
     <ActionButton label="Cancel pending request" disabled={busy} variant="secondary" onPress={cancel}/>
    </>:<Text style={s.line}>Cancelled requests are read-only.</Text>}
@@ -129,6 +147,9 @@ export function RequestDetailScreen({token,id,onBack,onEdit,onExpired}:Props){
       <Text style={s.line}>{optimized.note}</Text>
     </>}
   </View>:null}
+  {offerBusy?<ActivityIndicator color={COLORS.forest}/>:null}
+  {offerError?<View style={s.card} accessibilityRole="alert"><Text style={s.error}>{offerError}</Text><ActionButton label="Retry proposal" disabled={!selectedVehicle||offerBusy} onPress={submitOffer}/></View>:null}
+  {offer?<View style={s.card}><Text style={s.heading}>Proposal submitted</Text><Text style={s.line}>Status: {offer.status}. Driver acceptance is required.</Text><Text style={s.line}>Expires: {new Date(offer.expiresAt).toLocaleString('en-NP',{timeZone:'Asia/Kathmandu'})} NPT</Text></View>:null}
   {previewLoading?<ActivityIndicator color={COLORS.forest}/>:null}
   {previewError?<View accessibilityRole="alert" style={s.card}><Text style={s.error}>{previewError}</Text><ActionButton label="Retry matching preview" onPress={()=>void checkMatches()}/></View>:null}
   {preview?<View style={s.card}>
@@ -144,6 +165,13 @@ export function RequestDetailScreen({token,id,onBack,onEdit,onExpired}:Props){
         <Text style={s.line}>{v.allocatedWeightKg} kg proposed • {v.remainingWeightKg} kg remaining</Text>
       </View>)}
     <Text style={s.line}>{preview.allocation.note}</Text>
+    <Text style={s.heading}>Choose a vehicle for a single-request offer</Text>
+    <Text style={s.line}>Only eligible vehicles can be selected. The backend rechecks road feasibility before saving the proposal.</Text>
+    {preview.candidates.filter(v=>v.eligible).length===0?<Text style={s.line}>No eligible vehicles to propose to.</Text>:null}
+    {preview.candidates.filter(v=>v.eligible).map(v=><ActionButton key={v.vehicleId}
+      label={(selectedVehicle===v.vehicleId?'Selected: ':'Select: ')+v.vehicleType.replace('_',' ')+' • '+v.bodyType+' • '+v.maximumWeightKg+' kg'}
+      variant="secondary" disabled={offerBusy||!!offer} onPress={()=>setSelectedVehicle(v.vehicleId)}/>)}
+    {selectedVehicle&&!offer?<ActionButton label="Send proposal to Driver" disabled={offerBusy} onPress={submitOffer}/>:null}
     <Text style={s.heading}>Individual vehicle compatibility</Text>
     {preview.candidates.length===0?<Text style={s.line}>No registered vehicles exist yet.</Text>:
      preview.candidates.map(v=><View key={v.vehicleId} style={s.matchRow}>

@@ -100,3 +100,13 @@ export type FarmerOptimizedPreview =
 export const farmerOptimizedPreview=(token:string,id:string,vehicleId?:string)=>
  apiRequest<FarmerOptimizedPreview>('/api/farmer/requests/'+encodeURIComponent(id)+'/optimized-preview'+
   (vehicleId?'?vehicleId='+encodeURIComponent(vehicleId):''),'GET',undefined,token);
+
+
+// Single-request offers only; server decides feasibility and Driver owns decisions.
+export type TransportOffer={id:string;requestId:string;vehicleId:string;status:'proposed'|'accepted'|'declined';marketName:string;pickupDate:string;weightKg:number;distanceMeters:number;durationSeconds:number;expiresAt:string;createdAt:string};
+export const createFarmerOffer=(token:string,requestId:string,vehicleId:string)=>
+ apiRequest<{offer:TransportOffer}>('/api/farmer/requests/'+encodeURIComponent(requestId)+'/offers','POST',{vehicleId},token);
+export const driverOffers=(token:string)=>
+ apiRequest<{offers:TransportOffer[]}>('/api/driver/offers','GET',undefined,token);
+export const decideDriverOffer=(token:string,id:string,decision:'accept'|'decline')=>
+ apiRequest<{offer:TransportOffer;trip?:{id:string;status:string}}>('/api/driver/offers/'+encodeURIComponent(id)+'/'+decision,'POST',undefined,token);

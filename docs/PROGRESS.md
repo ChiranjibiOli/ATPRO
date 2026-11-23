@@ -138,3 +138,11 @@ CI and commit verification tracked separately; no physical Expo Go/Android testi
 
 ## 2026-11-22 — Single-request Driver offer backend pair
 Pre-run: main 9940e13252a836cf0fd44ced99e21ef070e7a9e0, latest CI 44908327857 green, zero open issues. Inspected actual repository tree, source, tests and docs. Planned two backend slices in DEVELOPMENT_PLAN before code. Slice 35 adds Farmer-authorized single-request proposal with OSRM-directed feasibility, expiry, duplicate rejection and JSON persistence. Slice 36 adds Driver-only offer listing and atomic accept/decline with stale revision, ownership, vehicle/date conflict, weight and availability checks. No mobile screens were added, no multi-Farmer booking or pickup/delivery status, no PostgreSQL or public preview. Added offers.test.js for domain and API integration. An intermediate CI run failed due to an incorrectly escaped route regex; corrected in subsequent commit. Final CI status must be checked before claiming verified tests, TypeScript and Android bundle. Next pair: native Farmer proposal action and Driver offers/acceptance screen, followed by pickup/delivery transitions.
+
+
+## 2026-11-23 — Farmer proposal and Driver offers mobile integration
+Audit: head dbe26e28b3501a3b52ee6ae5ecfcfed40648f289, CI green, no open issues. Existing backend offers already implemented; native UI was absent. Plan committed first at 21d6eaa27b61ae587a9ed8d31b96df8f6dfd472f.
+- Slice 37: Farmer RequestDetailScreen now loads eligible vehicles, supports explicit vehicle selection and confirmation, POSTs one-request proposal, and displays server-returned status/expiry. Handles 401/409/503 and retry.
+- Slice 38: DriverOffersScreen lists own proposals and allows confirmed accept/decline; Driver dashboard navigation added. Includes loading, empty, expiry, error, retry and success states.
+- Typed client API additions. No backend routes or DB schema changed. Existing backend tests cover authorization/booking logic; CI TypeScript and Android export must be checked after commit. No physical Android, APK, live OSRM or hosted preview verified.
+- Next: pickup confirmation and delivery state transitions (backend first), then mobile trip tracking.

@@ -337,3 +337,22 @@ Existing native Farmer create/edit request form now accepts optional pickup/mark
 ## 2026-11-22 — Backend-only Driver offer lifecycle
 **Slice 35, Farmer proposal:** Authenticated Farmer goal is to request a single-pickup route offer for an owned pending request. No mobile form is added yet; POST /api/farmer/requests/:id/offers takes only a valid vehicleId UUID. Backend reads persisted Farmer request, vehicle and Driver availability, checks coordinates, registered status, payload, handling class, time window, then uses directed OSRM matrix and evaluatePickupRoute to enforce arrival, duration and perishability. Stores a 30-minute proposed offer containing request revision, owner IDs, one market/date, weight and route estimates. Duplicate live proposals return 409. 400 malformed body, 401 session, 403 wrong role, 404 nonowner, 409 ineligible/conflict, 429 throttling, 503 OSRM failure. API response returns only the own offer summary. Empty/no vehicle, missing coordinate, OSRM unavailable and expired offer are explicit errors. Tests: proposal persistence, route feasibility, role, owner, duplicate, invalid payload, and no mutation on failure. **No mobile button exists yet.**
 **Slice 36, Driver decision:** Authenticated Driver goal is to inspect own offers via GET /api/driver/offers and POST /api/driver/offers/:id/accept or /decline. No new native page this run. Empty list is `{offers:[]}`; resolved offers remain visible with status. No client fields are trusted on decision. Transaction checks offer owner, proposed state, expiry, current pending request/revision, vehicle registration, weight/handling, availability and competing accepted trip/date; acceptance writes a trip, assignment, request assigned state and offer accepted state in one serialized JSON transaction. Decline writes only declined offer state. Errors: 401 session, 403 wrong role, 404 other Driver, 409 stale/replayed/expired/conflict, 503 storage failure. Tests cover cross-driver, stale revision, conflict, replay, expiry, decline and durable JSON records. This is a **single-request trip**, not a multi-Farmer booking, and mobile UI is still outstanding.
+
+
+## Built 2026-11-23: Farmer single-request offer creation UI
+- Role/goal: authenticated Farmer proposes one pending owned request to one eligible vehicle; never an automatic booking.
+- Fields: eligible vehicle selection from GET /api/farmer/requests/:id/matches; proposal confirmation; status and expiry display.
+- Actions: load eligible vehicles, select one, confirm POST /api/farmer/requests/:id/offers {vehicleId}, retry errors.
+- Validation: client requires pending request and selected eligible vehicle; server validates ownership, coordinates, weight, handling, Driver availability, OSRM route, duplicate offers and request revision.
+- Entities: requests, vehicles, availability, offers. No schema change.
+- States: initial, matching loading/error/empty, selected, confirmation, submission busy, success with expiry, 401 session expiry, 409 conflict and 503 routing failure.
+- Acceptance: no proposal without confirmation; only server response shows success; Driver must explicitly accept. Backend offers tests, TypeScript and Expo Android bundle.
+
+## Built 2026-11-23: Driver offers and decision screen
+- Role/goal: authenticated Driver views own proposals and accepts or declines a single-request trip.
+- Fields: market, pickup date, kg, distance, duration, status, expiry; no other Farmers' identities/coordinates.
+- Actions: dashboard navigation, GET /api/driver/offers, refresh, confirm POST /api/driver/offers/:id/accept or /decline, return.
+- Validation/authorization: server enforces Driver role, offer ownership, expiry, request revision, vehicle capacity/availability and booking conflicts transactionally in the development JSON store.
+- Entities: offers, trips, tripAssignments, requests; no schema change.
+- States: loading, empty, populated, expired, accepted/declined, confirmation, busy, error/retry, session expiry and 409 refresh.
+- Acceptance: no decisions on resolved/expired offers; confirmation required; server success is authoritative; physical Android UI not yet verified.
