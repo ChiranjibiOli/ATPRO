@@ -1,0 +1,6 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { transitionTrip } from '../src/trip-lifecycle.js';
+const fixture=()=>({trips:[{id:'t',driverId:'d',status:'accepted'}],tripAssignments:[1,2].map(n=>({tripId:'t',requestId:'r'+n,sequence:n,status:'pending_pickup'})),requests:[1,2].map(n=>({id:'r'+n,status:'assigned',revision:2}))});
+test('pickup ownership, ordering, replay and revisions',()=>{const d=fixture();assert.equal(transitionTrip(d,'t','other','r1',0).status,404);assert.equal(transitionTrip(d,'t','d','r2',0).status,409);assert.equal(transitionTrip(d,'t','d','r1',0).status,200);assert.equal(d.requests[0].revision,3);assert.equal(transitionTrip(d,'t','d','r1',0).status,409);});
+test('delivery requires all pickups and is atomic on invalid state',()=>{const d=fixture();transitionTrip(d,'t','d','r1',0);const before=structuredClone(d);assert.equal(transitionTrip(d,'t','d',null,0).status,409);assert.deepEqual(d,before);transitionTrip(d,'t','d','r2',0);assert.equal(transitionTrip(d,'t','d',null,0).status,200);assert.equal(d.trips[0].status,'completed');assert.ok(d.requests.every(r=>r.status==='delivered'&&r.revision===4));assert.equal(transitionTrip(d,'t','d',null,0).status,409);});

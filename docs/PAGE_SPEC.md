@@ -356,3 +356,7 @@ Existing native Farmer create/edit request form now accepts optional pickup/mark
 - Entities: offers, trips, tripAssignments, requests; no schema change.
 - States: loading, empty, populated, expired, accepted/declined, confirmation, busy, error/retry, session expiry and 409 refresh.
 - Acceptance: no decisions on resolved/expired offers; confirmation required; server success is authoritative; physical Android UI not yet verified.
+
+
+## Driver trip lifecycle backend (2026-11-26)
+See TRIP_LIFECYCLE_PLAN_2026-11-25.md for pre-code role, fields, UI states, contracts, acceptance and tests. POST /api/driver/trips/:tripId/pickups/:requestId/confirm and POST /api/driver/trips/:tripId/deliver require an authenticated assigned Driver. No editable fields; server timestamps and revisions. 401/403/404/409 errors; successful sanitized trip and assignments. Native Trips UI, loading/empty/retry and confirmation actions remain future work.

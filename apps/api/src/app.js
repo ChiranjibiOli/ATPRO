@@ -1,3 +1,4 @@
+import { transitionTrip } from './trip-lifecycle.js';
 import { createServer } from 'node:http';
 import { validateVehicle, createVehicle } from './vehicles.js';
 import { validateAvailability, validateEligibilityQuery, previewVehicleEligibility } from './availability.js';
@@ -222,6 +223,22 @@ export function createApp({ store, now = () => Date.now(), limiter = createLimit
           if (!(error instanceof RoutingUnavailableError) && !(error instanceof TypeError)) console.error('Optimized preview failed:',error);
           return respond(res, 503, { error: 'Road optimization is currently unavailable. Try again later.' });
         }
+      }
+      const pickupParts = /^\/api\/driver\/trips\/([0-9a-f-]{36})\/pickups\/([0-9a-f-]{36})\/confirm$/.exec(path);
+      const deliveryParts = /^\/api\/driver\/trips\/([0-9a-f-]{36})\/deliver$/.exec(path);
+      if (req.method === 'POST' && (pickupParts || deliveryParts)) {
+        const token = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(req.headers.authorization ?? '')?.[1];
+        if (!token) return respond(res,401,{error:'Authentication required.'});
+        const result = await store.transaction(data => {
+          const session=(data.sessions??[]).find(s=>s.tokenHash===tokenDigest(token)&&Date.parse(s.expiresAt)>now());
+          const user=session&&(data.users??[]).find(u=>u.id===session.userId);
+          if(!user)return {value:{status:401,error:'Session expired.'}};
+          if(user.role!=='driver')return {value:{status:403,error:'Driver access required.'}};
+          const outcome=transitionTrip(data,(pickupParts||deliveryParts)[1],user.id,pickupParts?pickupParts[2]:null,now());
+          return {write:outcome.status===200,value:outcome};
+        });
+        const {status,...payload}=result;
+        return respond(res,status,payload);
       }
       // Driver offers: proposal creation is Farmer-owned; decisions are Driver-owned.
       const farmerOfferParts = /^\/api\/farmer\/requests\/([0-9a-f-]{36})\/offers$/.exec(path);

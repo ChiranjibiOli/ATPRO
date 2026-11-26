@@ -146,3 +146,7 @@ Audit: head dbe26e28b3501a3b52ee6ae5ecfcfed40648f289, CI green, no open issues. 
 - Slice 38: DriverOffersScreen lists own proposals and allows confirmed accept/decline; Driver dashboard navigation added. Includes loading, empty, expiry, error, retry and success states.
 - Typed client API additions. No backend routes or DB schema changed. Existing backend tests cover authorization/booking logic; CI TypeScript and Android export must be checked after commit. No physical Android, APK, live OSRM or hosted preview verified.
 - Next: pickup confirmation and delivery state transitions (backend first), then mobile trip tracking.
+
+
+## 2026-11-26: lifecycle backend
+Implemented ordered pickup and all-pickups-required delivery transitions with Driver ownership, replay rejection, timestamps and revisions. Added domain tests. CI and Android export must be verified; no mobile Trips UI or physical-device verification. Next: Driver trip listing and native lifecycle controls.

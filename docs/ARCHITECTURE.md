@@ -148,3 +148,7 @@ The new `apps/api/src/offers.js` domain module validates a Farmer-owned request 
 
 ## 2026-11-23 native offer workflow integration
 Farmer RequestDetailScreen → owner-scoped matches GET → eligible vehicle selection → confirmation → POST Farmer offers → existing JSON offer persistence. Driver Dashboard → DriverOffersScreen → owner-scoped GET offers → confirmation → POST accept/decline → existing serialized JSON transaction and trip assignment. Existing backend revalidates vehicle and request on acceptance; no client-side role or capacity authority. Offer acceptance currently supports a single request per trip. No new database fields or external hosting. Production-grade cross-process transaction isolation and accepted multi-Farmer trips remain future work.
+
+
+## Trip lifecycle
+Driver-only pickup and delivery POSTs authenticate and mutate within JsonStore.transaction. Pickup advances ordered assignment/request/trip; delivery validates every assignment and request before completing all records. Single-process serialization only; no production cross-process isolation. No new collections.
